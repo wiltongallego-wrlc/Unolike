@@ -311,6 +311,10 @@ const Game = (() => {
     humanPlay(state.pendingCardId, color);
   }
 
+  function cancelColor() {
+    if (state) state.pendingCardId = null;
+  }
+
   function humanDraw() {
     if (state.phase !== "playing") return;
     const player = currentPlayer();
@@ -335,6 +339,7 @@ const Game = (() => {
     newGame,
     humanPlay,
     resolveColor,
+    cancelColor,
     humanDraw,
     sayUno,
     getPlayable,

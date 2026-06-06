@@ -65,11 +65,55 @@ const App = (() => {
     screens[name].classList.add("screen--active");
   }
 
+  const modalStack = [];
+  let deferredPrompt = null;
+
+  function pushSentinel() {
+    try {
+      history.pushState({ xc: 1 }, "");
+    } catch (e) {}
+  }
+
   function openModal(name) {
     modals[name].hidden = false;
+    const i = modalStack.indexOf(name);
+    if (i >= 0) modalStack.splice(i, 1);
+    modalStack.push(name);
+    pushSentinel();
   }
   function closeModal(name) {
     modals[name].hidden = true;
+    const i = modalStack.lastIndexOf(name);
+    if (i >= 0) modalStack.splice(i, 1);
+  }
+
+  function cancelColorPicker() {
+    UI.hideColorPicker();
+    pendingWildId = null;
+    if (gameMode !== "online") Game.cancelColor();
+  }
+
+  // Botão "voltar" (Android / navegador): fecha o que estiver por cima
+  function onPopState() {
+    if (!$("#color-picker").hidden) {
+      cancelColorPicker();
+      pushSentinel();
+      return;
+    }
+    if (modalStack.length) {
+      const top = modalStack[modalStack.length - 1];
+      if (top === "lobby") leaveOnline();
+      closeModal(top);
+      pushSentinel();
+      return;
+    }
+    if (isActive("game")) {
+      if (gameMode === "online") leaveOnline();
+      showScreen("home");
+      pushSentinel();
+      return;
+    }
+    pushSentinel(); // na home/login: evita sair sem querer
   }
 
   // ---------- Perfis ----------
@@ -237,7 +281,15 @@ const App = (() => {
   }
 
   // ---------- Online ----------
+  function setOnlineBusy(busy) {
+    ["#btn-create-room", "#btn-join-room", "#btn-public-match"].forEach((s) => {
+      const b = $(s);
+      if (b) b.disabled = busy;
+    });
+  }
+
   function renderLobby(l) {
+    setOnlineBusy(false);
     if (onlineInGame) return;
     closeModal("online");
     openModal("lobby");
@@ -475,6 +527,8 @@ const App = (() => {
       $("#btn-logout").hidden = true;
       if (onlineInGame) leaveOnline();
       showScreen("login");
+      const em = $("#auth-email");
+      if (em) setTimeout(() => em.focus(), 50);
     }
   }
 
@@ -669,16 +723,19 @@ const App = (() => {
     $("#btn-online-close").addEventListener("click", () => closeModal("online"));
     $("#btn-create-room").addEventListener("click", () => {
       $("#online-msg").textContent = "Criando sala…";
+      setOnlineBusy(true);
       Online.createRoom();
     });
     $("#btn-join-room").addEventListener("click", () => {
       $("#online-msg").textContent = "Entrando…";
+      setOnlineBusy(true);
       Online.joinByCode($("#join-code").value);
     });
     $("#btn-public-match").addEventListener("click", () => {
       const p = Profiles.current();
       const t = tierOf(p ? p.stats.points : 0);
       $("#online-msg").textContent = `Procurando partida — ${t.label}…`;
+      setOnlineBusy(true);
       Online.publicMatch(t.id);
     });
     $("#btn-lobby-start").addEventListener("click", () => {
@@ -687,6 +744,30 @@ const App = (() => {
     $("#btn-lobby-leave").addEventListener("click", () => {
       leaveOnline();
       closeModal("lobby");
+    });
+
+    // Fechar tocando fora do card (modais não-críticos)
+    ["rules", "ranking", "profiles", "online", "pause"].forEach((name) => {
+      modals[name].addEventListener("click", (e) => {
+        if (e.target === modals[name]) closeModal(name);
+      });
+    });
+
+    // Seletor de cor: cancelar (botão ou toque fora)
+    $("#btn-color-cancel").addEventListener("click", cancelColorPicker);
+    $("#color-picker").addEventListener("click", (e) => {
+      if (e.target.id === "color-picker") cancelColorPicker();
+    });
+
+    // Instalar PWA
+    $("#btn-install").addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      try {
+        await deferredPrompt.userChoice;
+      } catch (e) {}
+      deferredPrompt = null;
+      $("#btn-install").hidden = true;
     });
 
     // Modal de pausa
@@ -753,7 +834,26 @@ const App = (() => {
     window.addEventListener("load", () => {
       navigator.serviceWorker
         .register("sw.js")
-        .then((reg) => reg.update())
+        .then((reg) => {
+          const check = () => reg.update().catch(() => {});
+          check();
+          // verifica atualização ao voltar ao app e periodicamente
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) check();
+          });
+          window.addEventListener("focus", check);
+          setInterval(check, 60 * 1000);
+          // ativa imediatamente um novo SW que ficou aguardando
+          reg.addEventListener("updatefound", () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener("statechange", () => {
+              if (nw.state === "installed" && reg.waiting) {
+                reg.waiting.postMessage({ type: "SKIP_WAITING" });
+              }
+            });
+          });
+        })
         .catch(() => {});
     });
   }
@@ -764,6 +864,23 @@ const App = (() => {
     renderProfileChip();
     UI.bindGame();
     registerSW();
+
+    // Botão "voltar" do Android / navegador
+    window.addEventListener("popstate", onPopState);
+    pushSentinel();
+
+    // Instalação do PWA
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const b = $("#btn-install");
+      if (b) b.hidden = false;
+    });
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      const b = $("#btn-install");
+      if (b) b.hidden = true;
+    });
 
     // Callbacks do jogo online
     Online.on({
@@ -782,6 +899,7 @@ const App = (() => {
         UI.banner("Sala encerrada", 1600);
       },
       error: (msg) => {
+        setOnlineBusy(false);
         $("#online-msg").textContent = msg || "Erro de conexão.";
       },
     });

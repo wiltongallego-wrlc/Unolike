@@ -1,6 +1,6 @@
 /* sw.js - service worker para funcionamento offline (PWA) */
 
-const CACHE = "xablaucard-v6";
+const CACHE = "xablaucard-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -20,6 +20,11 @@ const ASSETS = [
   "./manifest.webmanifest",
   "./icons/icon.svg",
 ];
+
+// Permite que a página peça ativação imediata do novo SW
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
