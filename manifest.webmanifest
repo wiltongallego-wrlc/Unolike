@@ -1,0 +1,20 @@
+{
+  "name": "Unolike",
+  "short_name": "Unolike",
+  "description": "Jogo de cartas estilo UNO para celular, single player contra bots.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
