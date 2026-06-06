@@ -11,6 +11,7 @@
  * com cadastro e ranking apenas locais.
  */
 window.UNOLIKE_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: "",
+  supabaseUrl: "https://jlfntgkogcjbqigkbosz.supabase.co",
+  supabaseAnonKey:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsZm50Z2tvZ2NqYnFpZ2tib3N6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU0NDIsImV4cCI6MjA5NjM1MTQ0Mn0.XrGwIF3i5lNcnG8Qt4V_HE8MqhP963ID2G308W12ekI",
 };
