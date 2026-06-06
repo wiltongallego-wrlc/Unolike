@@ -61,13 +61,22 @@
     <div id="opponents" class="opponents"></div>
 
     <div class="table">
+      <div id="table-glow" class="table-glow"></div>
       <div class="pile">
-        <button id="draw-pile" class="card card--back" aria-label="Comprar carta">
-          <span class="card-back-logo">UNO</span>
-        </button>
-        <div id="discard-pile" class="discard"></div>
+        <div class="pile-slot">
+          <button id="draw-pile" class="card card--back" aria-label="Comprar carta">
+            <span class="card-back-logo">UNO</span>
+          </button>
+          <span id="draw-hint" class="pile-tag">Comprar</span>
+        </div>
+        <div class="pile-slot">
+          <div id="discard-pile" class="discard"></div>
+          <div class="color-row">
+            <span class="color-row__label">Cor</span>
+            <div id="color-badge" class="color-badge" aria-hidden="true"></div>
+          </div>
+        </div>
       </div>
-      <div id="color-badge" class="color-badge" aria-hidden="true"></div>
     </div>
 
     <div class="player-area">

@@ -1,4 +1,4 @@
-/* ui.js - renderização e ligação com o DOM */
+/* ui.js - renderização, animações e ligação com o DOM */
 
 const UI = (() => {
   const $ = (sel) => document.querySelector(sel);
@@ -8,16 +8,24 @@ const UI = (() => {
     hand: $("#player-hand"),
     discard: $("#discard-pile"),
     drawPile: $("#draw-pile"),
+    drawHint: $("#draw-hint"),
     colorBadge: $("#color-badge"),
     direction: $("#direction-indicator"),
     playerLabel: $("#player-label"),
+    playerArea: $(".player-area"),
     btnUno: $("#btn-uno"),
     turnBanner: $("#turn-banner"),
     colorPicker: $("#color-picker"),
+    table: $(".table"),
+    tableGlow: $("#table-glow"),
   };
 
   let currentPlayable = new Set();
   let isHumanTurn = false;
+  let dealPending = false;
+  let lastDiscardId = null;
+  let lastColor = null;
+  let flyingToDiscard = false;
 
   // ---------- Construção de cartas ----------
   function cardClass(card) {
@@ -47,16 +55,112 @@ const UI = (() => {
     return wrap;
   }
 
+  function buildCardBack() {
+    const back = document.createElement("div");
+    back.className = "card card--back";
+    const logo = document.createElement("span");
+    logo.className = "card-back-logo";
+    logo.textContent = "UNO";
+    back.appendChild(logo);
+    return back;
+  }
+
+  // ---------- Animação: voo de carta entre dois pontos ----------
+  function rectOf(node) {
+    return node.getBoundingClientRect();
+  }
+
+  function flyClone(node, srcRect, destRect, opts = {}) {
+    const { duration = 420, delay = 0, rotate = 0 } = opts;
+    const scaleEnd = destRect.width / srcRect.width || 1;
+
+    node.classList.add("fly-card");
+    node.style.left = srcRect.left + "px";
+    node.style.top = srcRect.top + "px";
+    node.style.width = srcRect.width + "px";
+    node.style.height = srcRect.height + "px";
+    node.style.margin = "0";
+    document.body.appendChild(node);
+
+    const srcCx = srcRect.left + srcRect.width / 2;
+    const srcCy = srcRect.top + srcRect.height / 2;
+    const dstCx = destRect.left + destRect.width / 2;
+    const dstCy = destRect.top + destRect.height / 2;
+    const dx = dstCx - srcCx;
+    const dy = dstCy - srcCy;
+
+    const anim = node.animate(
+      [
+        { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 },
+        {
+          transform: `translate(${dx}px, ${dy}px) scale(${scaleEnd}) rotate(${rotate}deg)`,
+          opacity: 1,
+        },
+      ],
+      { duration, delay, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
+    );
+    anim.onfinish = () => node.remove();
+    return anim;
+  }
+
+  function opponentNode(playerId) {
+    return el.opponents.querySelector(`[data-pid="${playerId}"]`);
+  }
+
+  function flyCardToDiscard(player, card) {
+    const dest = rectOf(el.discard);
+    let src;
+    if (player.isHuman) {
+      const n = el.hand.querySelector(`[data-id="${card.id}"]`);
+      src = n ? rectOf(n) : rectOf(el.drawPile);
+    } else {
+      const opp = opponentNode(player.id);
+      src = opp ? rectOf(opp) : rectOf(el.opponents);
+    }
+    if (!dest.width) return;
+    flyingToDiscard = true;
+    const clone = buildCardFace(card);
+    const anim = flyClone(clone, src, dest, {
+      duration: 430,
+      rotate: Math.random() * 16 - 8,
+    });
+    anim.onfinish = () => {
+      clone.remove();
+      flyingToDiscard = false;
+    };
+  }
+
+  function flyDrawToHand(player, count) {
+    const src = rectOf(el.drawPile);
+    if (!src.width) return;
+    let dest;
+    if (player.isHuman) {
+      dest = rectOf(el.hand);
+    } else {
+      const opp = opponentNode(player.id);
+      dest = opp ? rectOf(opp) : rectOf(el.opponents);
+    }
+    const n = Math.min(count, 3);
+    for (let i = 0; i < n; i++) {
+      flyClone(buildCardBack(), src, dest, {
+        duration: 400,
+        delay: i * 90,
+        rotate: Math.random() * 16 - 8,
+      });
+    }
+  }
+
   // ---------- Oponentes ----------
   function renderOpponents(state) {
     el.opponents.innerHTML = "";
     const bots = state.players.filter((p) => !p.isHuman);
+    const activeId = state.players[state.currentIndex].id;
     for (const bot of bots) {
       const div = document.createElement("div");
       div.className = "opponent";
-      if (state.players[state.currentIndex].id === bot.id && state.phase !== "over") {
-        div.classList.add("active");
-      }
+      div.dataset.pid = bot.id;
+      const isActive = activeId === bot.id && state.phase !== "over";
+      if (isActive) div.classList.add("active");
 
       const avatar = document.createElement("div");
       avatar.className = "opponent__avatar";
@@ -84,6 +188,14 @@ const UI = (() => {
       }
 
       div.append(avatar, name, cards, count);
+
+      if (isActive) {
+        const turn = document.createElement("div");
+        turn.className = "opponent__turn";
+        turn.textContent = "jogando…";
+        div.appendChild(turn);
+      }
+
       el.opponents.appendChild(div);
     }
   }
@@ -92,11 +204,33 @@ const UI = (() => {
   function renderDiscard(state) {
     const top = state.discard[state.discard.length - 1];
     if (!top) return;
-    el.discard.innerHTML = "";
-    el.discard.appendChild(buildCardFace(top));
 
+    const changed = top.id !== lastDiscardId;
+    el.discard.innerHTML = "";
+    const face = buildCardFace(top);
+    // Anima o "plop" só quando não houve carta voando (início/reembaralho)
+    if (changed && !flyingToDiscard) face.classList.add("flip-in");
+    el.discard.appendChild(face);
+    lastDiscardId = top.id;
+
+    // Badge da cor ativa
     el.colorBadge.className = "color-badge";
     if (state.activeColor) el.colorBadge.classList.add(state.activeColor);
+
+    // Brilho da mesa na cor ativa
+    el.tableGlow.className = "table-glow";
+    if (state.activeColor) el.tableGlow.classList.add(state.activeColor);
+
+    // Flash quando a cor muda
+    if (lastColor && state.activeColor && lastColor !== state.activeColor) {
+      el.colorBadge.classList.add("pulse");
+      el.tableGlow.classList.add("flash");
+      setTimeout(() => {
+        el.colorBadge.classList.remove("pulse");
+        el.tableGlow.classList.remove("flash");
+      }, 650);
+    }
+    lastColor = state.activeColor;
 
     el.direction.classList.toggle("reversed", state.direction === -1);
   }
@@ -106,13 +240,12 @@ const UI = (() => {
     const human = state.players.find((p) => p.isHuman);
     el.hand.innerHTML = "";
 
-    // Ordena por cor depois valor para facilitar a leitura
     const sorted = [...human.hand].sort((a, b) => {
       if (a.color !== b.color) return COLORS.indexOf(a.color) - COLORS.indexOf(b.color);
       return a.value.localeCompare(b.value);
     });
 
-    for (const card of sorted) {
+    sorted.forEach((card) => {
       const face = buildCardFace(card);
       if (isHumanTurn && currentPlayable.has(card.id)) {
         face.classList.add("playable");
@@ -121,22 +254,54 @@ const UI = (() => {
       }
       face.addEventListener("click", () => onCardClick(card));
       el.hand.appendChild(face);
-    }
+    });
 
     el.playerLabel.textContent = `${human.name} — ${human.hand.length} cartas`;
+  }
+
+  // Distribuição inicial: cartas voam da pilha de compra para as mãos
+  function dealAnimation(state) {
+    if (!rectOf(el.drawPile).width) return;
+    for (let i = 0; i < 7; i++) {
+      setTimeout(
+        () =>
+          flyClone(buildCardBack(), rectOf(el.drawPile), rectOf(el.hand), {
+            duration: 360,
+            rotate: Math.random() * 12 - 6,
+          }),
+        i * 65
+      );
+    }
+    state.players
+      .filter((p) => !p.isHuman)
+      .forEach((bot) => {
+        const opp = opponentNode(bot.id);
+        if (!opp) return;
+        for (let i = 0; i < 3; i++) {
+          setTimeout(
+            () => flyClone(buildCardBack(), rectOf(el.drawPile), rectOf(opp), { duration: 360 }),
+            i * 65
+          );
+        }
+      });
   }
 
   function onCardClick(card) {
     if (!isHumanTurn) return;
     if (!currentPlayable.has(card.id)) {
-      // feedback leve: balança a carta
       const node = el.hand.querySelector(`[data-id="${card.id}"]`);
       if (node) {
         node.animate(
-          [{ transform: "translateX(0)" }, { transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "translateX(0)" }],
+          [
+            { transform: "translateX(0)" },
+            { transform: "translateX(-6px)" },
+            { transform: "translateX(6px)" },
+            { transform: "translateX(0)" },
+          ],
           { duration: 220 }
         );
       }
+      if (navigator.vibrate) navigator.vibrate([10, 40, 10]);
       return;
     }
     Game.humanPlay(card.id);
@@ -148,20 +313,33 @@ const UI = (() => {
     renderDiscard(state);
     renderHand(state);
     updateDrawPile(state);
+    el.playerArea.classList.toggle(
+      "active",
+      isHumanTurn && state.phase !== "over"
+    );
+
+    if (dealPending) {
+      dealPending = false;
+      requestAnimationFrame(() => dealAnimation(state));
+    }
   }
 
   function updateDrawPile(state) {
     const human = state.players.find((p) => p.isHuman);
     const canDraw =
       isHumanTurn && state.phase === "playing" && Game.getPlayable(human).length === 0;
-    el.drawPile.classList.toggle("disabled", !canDraw);
-    el.drawPile.style.opacity = canDraw ? "1" : "0.6";
+    el.drawPile.classList.toggle("must-draw", canDraw);
+    el.drawPile.style.opacity = isHumanTurn ? "1" : "0.6";
+    if (el.drawHint) {
+      el.drawHint.textContent = canDraw ? "Compre!" : "Comprar";
+    }
   }
 
   // ---------- Banner ----------
   let bannerTimer = null;
-  function banner(text, ms = 1100) {
+  function banner(text, ms = 1100, mini = false) {
     el.turnBanner.textContent = text;
+    el.turnBanner.classList.toggle("turn-banner--mini", mini);
     el.turnBanner.classList.add("show");
     clearTimeout(bannerTimer);
     bannerTimer = setTimeout(() => el.turnBanner.classList.remove("show"), ms);
@@ -190,23 +368,40 @@ const UI = (() => {
       const state = Game.getState();
       renderHand(state);
       updateDrawPile(state);
+      el.playerArea.classList.toggle("active", isHumanTurn);
 
       if (isHumanTurn) {
         banner("Sua vez!", 900);
+        if (navigator.vibrate) navigator.vibrate(20);
+      } else {
+        banner(`Vez de ${player.name}`, 750, true);
       }
     });
 
     Game.on("play", ({ player, card }) => {
+      flyCardToDiscard(player, card);
       if (isActionCard(card) && Sound.isEnabled()) Sound.special();
       else if (Sound.isEnabled()) Sound.play();
       if (navigator.vibrate) navigator.vibrate(15);
     });
 
     Game.on("draw", ({ player, count }) => {
+      flyDrawToHand(player, count);
       if (Sound.isEnabled()) Sound.draw();
     });
 
     Game.on("special", ({ type, player }) => {
+      if (type === "reverse") {
+        el.direction.classList.add("spin");
+        setTimeout(() => el.direction.classList.remove("spin"), 650);
+      }
+      if (type === "skip" && player) {
+        const opp = opponentNode(player.id);
+        if (opp) {
+          opp.classList.add("skipped");
+          setTimeout(() => opp.classList.remove("skipped"), 450);
+        }
+      }
       const labels = {
         skip: player ? `${player.name} pulou!` : "Pulou!",
         reverse: "Sentido invertido!",
@@ -217,13 +412,12 @@ const UI = (() => {
       if (labels[type]) banner(labels[type], 1000);
     });
 
-    Game.on("needColor", () => {
-      showColorPicker();
-    });
+    Game.on("needColor", () => showColorPicker());
 
     Game.on("humanReachedUno", () => {
       setUnoButton(true);
       banner("Aperte UNO!", 1200);
+      if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
     });
 
     Game.on("uno", (player) => {
@@ -244,11 +438,14 @@ const UI = (() => {
       );
     });
 
-    Game.on("reshuffle", () => banner("Reembaralhando...", 900));
+    Game.on("reshuffle", () => banner("Reembaralhando…", 900, true));
 
     Game.on("newgame", () => {
       setUnoButton(false);
       hideColorPicker();
+      dealPending = true;
+      lastDiscardId = null;
+      lastColor = null;
     });
 
     Game.on("gameover", (winner) => {
