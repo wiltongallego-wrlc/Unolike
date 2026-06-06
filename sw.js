@@ -1,6 +1,6 @@
 /* sw.js - service worker para funcionamento offline (PWA) */
 
-const CACHE = "unolike-v4";
+const CACHE = "unolike-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,8 @@ const ASSETS = [
   "./js/ai.js",
   "./js/profiles.js",
   "./js/net.js",
+  "./js/online-engine.js",
+  "./js/online.js",
   "./js/game.js",
   "./js/ui.js",
   "./js/app.js",

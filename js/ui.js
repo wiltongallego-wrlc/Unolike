@@ -549,5 +549,7 @@ const UI = (() => {
     hideColorPicker,
     setUnoButton,
     banner,
+    buildCardFace,
+    buildCardBack,
   };
 })();

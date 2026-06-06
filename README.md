@@ -84,4 +84,9 @@ O jogo funciona 100% offline. Para ativar **ranking global** (e, em breve, **jog
 ### Status das fases
 - ✅ Fase 1: perfis, pontuação e ranking local
 - ✅ Fase 2: ranking global (Supabase) — requer suas chaves
-- 🚧 Fase 3: jogo online (salas por código + partida pública) — em desenvolvimento
+- ✅ Fase 3: jogo online — salas por código (Realtime, sem tabela) e partida pública (tabela `rooms`); host autoritativo. Em testes em dispositivos.
+
+#### Como funciona o online
+- **Salas por código:** usam apenas canais Realtime (broadcast + presence). Não exigem tabelas nem replicação — só o login anônimo habilitado.
+- **Partida pública:** usa a tabela `rooms` para descobrir/criar salas abertas (rode o `schema.sql`).
+- O **host** (quem cria a sala) é autoritativo: roda o motor e transmite o estado; os demais enviam ações.

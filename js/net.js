@@ -83,6 +83,68 @@ const Net = (() => {
     }
   }
 
+  // ---------- Salas (partida pública via tabela rooms) ----------
+  async function createPublicRoom(code) {
+    if (!(await init())) return null;
+    try {
+      const { data, error } = await client
+        .from("rooms")
+        .insert({ code, is_public: true, host_id: user.id, status: "lobby" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn("Net: createPublicRoom —", e.message);
+      return null;
+    }
+  }
+
+  async function findOpenPublicRoom() {
+    if (!(await init())) return null;
+    try {
+      const { data, error } = await client
+        .from("rooms")
+        .select("id,code,host_id,created_at")
+        .eq("is_public", true)
+        .eq("status", "lobby")
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (error) throw error;
+      return data && data.length ? data[0] : null;
+    } catch (e) {
+      console.warn("Net: findOpenPublicRoom —", e.message);
+      return null;
+    }
+  }
+
+  async function setRoomStatus(id, status) {
+    if (!(await init())) return false;
+    try {
+      const { error } = await client
+        .from("rooms")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.warn("Net: setRoomStatus —", e.message);
+      return false;
+    }
+  }
+
+  async function deleteRoom(id) {
+    if (!(await init())) return false;
+    try {
+      const { error } = await client.from("rooms").delete().eq("id", id);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.warn("Net: deleteRoom —", e.message);
+      return false;
+    }
+  }
+
   return {
     configured,
     available,
@@ -92,5 +154,9 @@ const Net = (() => {
     isReady: () => ready,
     getClient: () => client,
     getUser: () => user,
+    createPublicRoom,
+    findOpenPublicRoom,
+    setRoomStatus,
+    deleteRoom,
   };
 })();

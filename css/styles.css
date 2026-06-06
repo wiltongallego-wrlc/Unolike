@@ -951,3 +951,80 @@ body {
 .gameover-points strong {
   font-size: 30px;
 }
+
+/* ====================================================================
+   Online (menu, lobby)
+   ==================================================================== */
+.btn--online {
+  background: linear-gradient(180deg, #1aa64b, #117a36);
+}
+.join-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+}
+.join-row input {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid var(--panel-strong);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+}
+.join-row .btn {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.lobby-code-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 12px;
+}
+.lobby-code {
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  color: var(--accent);
+}
+.lobby-players {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 40px;
+}
+.lobby-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.lobby-player__av {
+  font-size: 24px;
+}
+.lobby-player__name {
+  flex: 1;
+  text-align: left;
+  font-weight: 700;
+}
+.lobby-host {
+  font-size: 10px;
+  font-weight: 900;
+  color: #1b1f2e;
+  background: var(--accent);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
