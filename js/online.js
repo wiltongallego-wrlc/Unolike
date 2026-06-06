@@ -17,6 +17,11 @@ const Online = (() => {
   let presenceList = [];
   let state = null;
 
+  let tier = null; // faixa de ranking (matchmaking público)
+  let autoTimer = null; // contagem regressiva (host)
+  let countdown = null; // valor da contagem (host)
+  let hostCountdown = null; // contagem recebida (não-host)
+
   const cb = {}; // { lobby, start, state, closed, error }
 
   function on(handlers) {
@@ -94,6 +99,7 @@ const Online = (() => {
         emit("closed", "host");
         cleanup();
       }
+      maybeAutoStart();
     });
 
     channel.on("broadcast", { event: "state" }, ({ payload }) => {
@@ -127,6 +133,13 @@ const Online = (() => {
       }
     });
 
+    channel.on("broadcast", { event: "lobbyinfo" }, ({ payload }) => {
+      if (!isHost) {
+        hostCountdown = payload.countdown;
+        emit("lobby", getLobby());
+      }
+    });
+
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await channel.track({
@@ -149,9 +162,52 @@ const Online = (() => {
       code,
       isHost,
       isPublic,
+      tier,
+      countdown: isHost ? countdown : hostCountdown,
       me,
       players: presenceList.map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, host: !!p.host })),
     };
+  }
+
+  // ---------- Início automático (matchmaking público) ----------
+  function clearAuto() {
+    if (autoTimer) clearInterval(autoTimer);
+    autoTimer = null;
+    countdown = null;
+  }
+  function broadcastLobby() {
+    broadcast("lobbyinfo", { countdown });
+  }
+  function maybeAutoStart() {
+    if (!isPublic || !isHost || started) return;
+    const n = presenceList.length;
+    if (n >= 4) {
+      clearAuto();
+      start();
+    } else if (n >= 2) {
+      if (autoTimer === null) {
+        countdown = 12;
+        broadcastLobby();
+        emit("lobby", getLobby());
+        autoTimer = setInterval(() => {
+          countdown -= 1;
+          if (countdown <= 0) {
+            clearAuto();
+            start();
+          } else {
+            broadcastLobby();
+            emit("lobby", getLobby());
+          }
+        }, 1000);
+      }
+    } else {
+      // menos de 2 jogadores: cancela contagem
+      if (autoTimer !== null) {
+        clearAuto();
+        broadcastLobby();
+        emit("lobby", getLobby());
+      }
+    }
   }
 
   function orderedPlayers() {
@@ -198,17 +254,18 @@ const Online = (() => {
     openChannel(c, false);
   }
 
-  async function publicMatch() {
+  async function publicMatch(tierArg) {
     if (!(await ensure())) return;
     isPublic = true;
-    const row = await Net.findOpenPublicRoom();
+    tier = tierArg || "iniciante";
+    const row = await Net.findOpenPublicRoom(tier);
     if (row) {
       roomRow = row;
       openChannel(row.code, false);
     } else {
       const c = genCode();
-      roomRow = await Net.createPublicRoom(c);
-      openChannel(c, !!roomRow || true);
+      roomRow = await Net.createPublicRoom(c, tier);
+      openChannel(c, true);
     }
   }
 
@@ -216,6 +273,7 @@ const Online = (() => {
     if (!isHost) return false;
     const players = orderedPlayers();
     if (players.length < 2) return false;
+    clearAuto();
     state = OnlineEngine.createState(players);
     started = true;
     broadcast("start", { state });
@@ -255,10 +313,13 @@ const Online = (() => {
         client.removeChannel(channel);
       } catch (e) {}
     }
+    clearAuto();
     channel = null;
     state = null;
     presenceList = [];
     started = false;
+    tier = null;
+    hostCountdown = null;
   }
 
   function leave() {

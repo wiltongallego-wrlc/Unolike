@@ -33,6 +33,22 @@ const App = (() => {
   // Auth
   let authTab = "login";
 
+  // Faixas de ranking (matchmaking por tier)
+  const TIERS = [
+    { id: "diamante", label: "💎 Diamante", min: 1500 },
+    { id: "ouro", label: "🥇 Ouro", min: 700 },
+    { id: "prata", label: "🥈 Prata", min: 300 },
+    { id: "bronze", label: "🥉 Bronze", min: 100 },
+    { id: "iniciante", label: "🔰 Iniciante", min: 0 },
+  ];
+  function tierOf(points) {
+    return TIERS.find((t) => (points || 0) >= t.min) || TIERS[TIERS.length - 1];
+  }
+  function tierLabel(id) {
+    const t = TIERS.find((x) => x.id === id);
+    return t ? t.label : "🔰 Iniciante";
+  }
+
   function loadSettings() {
     try {
       return JSON.parse(localStorage.getItem("unolike.settings")) || {};
@@ -243,11 +259,24 @@ const App = (() => {
     const start = $("#btn-lobby-start");
     start.style.display = l.isHost ? "" : "none";
     start.disabled = !(l.isHost && l.players.length >= 2);
-    $("#lobby-status").textContent = l.isHost
-      ? l.players.length < 2
-        ? "Aguardando jogadores entrarem…"
-        : "Pronto para começar!"
-      : "Aguardando o host iniciar…";
+    start.textContent = l.isPublic ? "Começar agora" : "Começar";
+
+    let status;
+    if (l.isPublic) {
+      const tl = tierLabel(l.tier);
+      if (l.countdown != null && l.players.length >= 2) {
+        status = `Matchmaking ${tl} — começando em ${l.countdown}s…`;
+      } else {
+        status = `Matchmaking ${tl} — procurando jogadores… (${l.players.length}/4)`;
+      }
+    } else {
+      status = l.isHost
+        ? l.players.length < 2
+          ? "Aguardando jogadores entrarem…"
+          : "Pronto para começar!"
+        : "Aguardando o host iniciar…";
+    }
+    $("#lobby-status").textContent = status;
   }
 
   function enterOnline(state) {
@@ -503,13 +532,8 @@ const App = (() => {
     }
 
     if (profile) {
+      // Single player conta apenas no ranking LOCAL (modo treino)
       Profiles.recordResult(profile.id, { won, score });
-      Net.submitResult({
-        name: profile.name,
-        avatar: profile.avatar,
-        won,
-        points: score,
-      });
     }
     renderProfileChip();
 
@@ -652,8 +676,10 @@ const App = (() => {
       Online.joinByCode($("#join-code").value);
     });
     $("#btn-public-match").addEventListener("click", () => {
-      $("#online-msg").textContent = "Procurando partida…";
-      Online.publicMatch();
+      const p = Profiles.current();
+      const t = tierOf(p ? p.stats.points : 0);
+      $("#online-msg").textContent = `Procurando partida — ${t.label}…`;
+      Online.publicMatch(t.id);
     });
     $("#btn-lobby-start").addEventListener("click", () => {
       if (!Online.start()) UI.banner("Precisa de pelo menos 2 jogadores", 1400);

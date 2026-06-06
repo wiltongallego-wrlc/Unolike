@@ -83,12 +83,12 @@ const Net = (() => {
   }
 
   // ---------- Salas (partida pública via tabela rooms) ----------
-  async function createPublicRoom(code) {
+  async function createPublicRoom(code, tier) {
     if (!(await init())) return null;
     try {
       const { data, error } = await client
         .from("rooms")
-        .insert({ code, is_public: true, host_id: user.id, status: "lobby" })
+        .insert({ code, is_public: true, host_id: user.id, status: "lobby", tier: tier || null })
         .select()
         .single();
       if (error) throw error;
@@ -99,16 +99,25 @@ const Net = (() => {
     }
   }
 
-  async function findOpenPublicRoom() {
+  async function findOpenPublicRoom(tier) {
     if (!(await init())) return null;
-    try {
-      const { data, error } = await client
+    const base = () =>
+      client
         .from("rooms")
-        .select("id,code,host_id,created_at")
+        .select("id,code,host_id,tier,created_at")
         .eq("is_public", true)
         .eq("status", "lobby")
         .order("created_at", { ascending: true })
         .limit(1);
+    try {
+      // 1) tenta a mesma faixa de ranking
+      if (tier) {
+        const { data, error } = await base().eq("tier", tier);
+        if (error) throw error;
+        if (data && data.length) return data[0];
+      }
+      // 2) qualquer sala pública aberta
+      const { data, error } = await base();
       if (error) throw error;
       return data && data.length ? data[0] : null;
     } catch (e) {

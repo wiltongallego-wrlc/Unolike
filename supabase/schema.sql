@@ -60,12 +60,16 @@ create table if not exists public.rooms (
   code        text unique,
   status      text not null default 'lobby',   -- lobby | playing | finished
   is_public   boolean not null default false,
+  tier        text,                            -- faixa de ranking (matchmaking)
   host_id     uuid references auth.users(id),
   max_players int not null default 4,
   state       jsonb,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Se a tabela já existia sem a coluna tier, adicione:
+alter table public.rooms add column if not exists tier text;
 
 alter table public.rooms enable row level security;
 
