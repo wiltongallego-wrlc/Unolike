@@ -26,6 +26,7 @@ const UI = (() => {
   let lastDiscardId = null;
   let lastColor = null;
   let flyingToDiscard = false;
+  let pendingDiscardReveal = null;
 
   // ---------- Construção de cartas ----------
   function cardClass(card) {
@@ -71,7 +72,7 @@ const UI = (() => {
   }
 
   function flyClone(node, srcRect, destRect, opts = {}) {
-    const { duration = 420, delay = 0, rotate = 0 } = opts;
+    const { duration = 420, delay = 0, rotate = 0, lift = 0 } = opts;
     const scaleEnd = destRect.width / srcRect.width || 1;
 
     node.classList.add("fly-card");
@@ -89,16 +90,27 @@ const UI = (() => {
     const dx = dstCx - srcCx;
     const dy = dstCy - srcCy;
 
-    const anim = node.animate(
-      [
-        { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 },
-        {
-          transform: `translate(${dx}px, ${dy}px) scale(${scaleEnd}) rotate(${rotate}deg)`,
-          opacity: 1,
-        },
-      ],
-      { duration, delay, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" }
-    );
+    const frames = [{ transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 }];
+    if (lift) {
+      // Ponto intermediário: a carta "levanta" e cresce um pouco, formando um arco
+      const midScale = 1 + (scaleEnd - 1) * 0.5 + 0.12;
+      frames.push({
+        transform: `translate(${dx * 0.45}px, ${dy * 0.45 - lift}px) scale(${midScale}) rotate(${rotate * 0.5}deg)`,
+        opacity: 1,
+        offset: 0.5,
+      });
+    }
+    frames.push({
+      transform: `translate(${dx}px, ${dy}px) scale(${scaleEnd}) rotate(${rotate}deg)`,
+      opacity: 1,
+    });
+
+    const anim = node.animate(frames, {
+      duration,
+      delay,
+      easing: "cubic-bezier(.2,.7,.3,1)",
+      fill: "forwards",
+    });
     anim.onfinish = () => node.remove();
     return anim;
   }
@@ -109,24 +121,44 @@ const UI = (() => {
 
   function flyCardToDiscard(player, card) {
     const dest = rectOf(el.discard);
+    if (!dest.width) return;
+
     let src;
+    let lift = 0;
+    let duration = 430;
+
     if (player.isHuman) {
       const n = el.hand.querySelector(`[data-id="${card.id}"]`);
-      src = n ? rectOf(n) : rectOf(el.drawPile);
+      if (n) {
+        src = rectOf(n);
+        n.style.visibility = "hidden"; // esconde o original assim que voa
+      } else {
+        src = rectOf(el.drawPile);
+      }
+      lift = 32; // arco mais pronunciado para a jogada do jogador
+      duration = 540;
     } else {
       const opp = opponentNode(player.id);
       src = opp ? rectOf(opp) : rectOf(el.opponents);
     }
-    if (!dest.width) return;
+
     flyingToDiscard = true;
     const clone = buildCardFace(card);
     const anim = flyClone(clone, src, dest, {
-      duration: 430,
-      rotate: Math.random() * 16 - 8,
+      duration,
+      lift,
+      rotate: Math.random() * 12 - 6,
     });
     anim.onfinish = () => {
       clone.remove();
       flyingToDiscard = false;
+      // Revela a carta no descarte só quando ela "pousa" no meio
+      if (pendingDiscardReveal) {
+        const f = pendingDiscardReveal;
+        pendingDiscardReveal = null;
+        f.style.opacity = "1";
+        f.classList.add("flip-in");
+      }
     };
   }
 
@@ -208,8 +240,14 @@ const UI = (() => {
     const changed = top.id !== lastDiscardId;
     el.discard.innerHTML = "";
     const face = buildCardFace(top);
-    // Anima o "plop" só quando não houve carta voando (início/reembaralho)
-    if (changed && !flyingToDiscard) face.classList.add("flip-in");
+    if (flyingToDiscard) {
+      // Mantém o destino invisível até a carta voadora "pousar" no meio
+      face.style.opacity = "0";
+      pendingDiscardReveal = face;
+    } else if (changed) {
+      // Sem voo (início / reembaralho): apenas o "plop"
+      face.classList.add("flip-in");
+    }
     el.discard.appendChild(face);
     lastDiscardId = top.id;
 
