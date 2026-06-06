@@ -71,6 +71,15 @@ const UI = (() => {
     return node.getBoundingClientRect();
   }
 
+  // Retângulo do tamanho de uma carta, centrado em (cx, cy).
+  // Evita que os clones "inchem" ao mirar containers grandes.
+  function cardSizeRect(cx, cy, scale = 1) {
+    const base = rectOf(el.drawPile);
+    const w = base.width * scale;
+    const h = base.height * scale;
+    return { left: cx - w / 2, top: cy - h / 2, width: w, height: h };
+  }
+
   function flyClone(node, srcRect, destRect, opts = {}) {
     const { duration = 420, delay = 0, rotate = 0, lift = 0 } = opts;
     const scaleEnd = destRect.width / srcRect.width || 1;
@@ -163,22 +172,38 @@ const UI = (() => {
   }
 
   function flyDrawToHand(player, count) {
-    const src = rectOf(el.drawPile);
-    if (!src.width) return;
-    let dest;
+    const pile = rectOf(el.drawPile);
+    if (!pile.width) return;
+
     if (player.isHuman) {
-      dest = rectOf(el.hand);
+      const hand = rectOf(el.hand);
+      const cy = hand.top + hand.height / 2;
+      const cx = hand.right - pile.width / 2 - 8; // entram pela borda direita
+      const n = Math.min(count, 4);
+      for (let i = 0; i < n; i++) {
+        const dest = cardSizeRect(cx, cy, 1);
+        setTimeout(
+          () =>
+            flyClone(buildCardBack(), rectOf(el.drawPile), dest, {
+              duration: 360,
+              rotate: Math.random() * 8 - 4,
+            }),
+          i * 100
+        );
+      }
     } else {
       const opp = opponentNode(player.id);
-      dest = opp ? rectOf(opp) : rectOf(el.opponents);
-    }
-    const n = Math.min(count, 3);
-    for (let i = 0; i < n; i++) {
-      flyClone(buildCardBack(), src, dest, {
-        duration: 400,
-        delay: i * 90,
-        rotate: Math.random() * 16 - 8,
-      });
+      const r = opp ? rectOf(opp) : rectOf(el.opponents);
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height * 0.55;
+      const n = Math.min(count, 4);
+      for (let i = 0; i < n; i++) {
+        const dest = cardSizeRect(cx, cy, 0.42); // encolhe ao chegar no bot
+        setTimeout(
+          () => flyClone(buildCardBack(), rectOf(el.drawPile), dest, { duration: 340 }),
+          i * 90
+        );
+      }
     }
   }
 
@@ -297,28 +322,50 @@ const UI = (() => {
     el.playerLabel.textContent = `${human.name} — ${human.hand.length} cartas`;
   }
 
-  // Distribuição inicial: cartas voam da pilha de compra para as mãos
+  // Distribuição inicial: cartas voam da pilha de compra, espalhando-se na mão
   function dealAnimation(state) {
-    if (!rectOf(el.drawPile).width) return;
-    for (let i = 0; i < 7; i++) {
+    const pile = rectOf(el.drawPile);
+    if (!pile.width) return;
+
+    const hand = rectOf(el.hand);
+    const cy = hand.top + hand.height / 2;
+    const count = 7;
+    const spread = Math.min(hand.width - pile.width, 240);
+    const startX = hand.left + hand.width / 2 - spread / 2;
+
+    // Esconde a mão real até as cartas "pousarem"
+    el.hand.style.opacity = "0";
+
+    for (let i = 0; i < count; i++) {
+      const cx = count > 1 ? startX + (spread * i) / (count - 1) : hand.left + hand.width / 2;
+      const dest = cardSizeRect(cx, cy, 1);
       setTimeout(
         () =>
-          flyClone(buildCardBack(), rectOf(el.drawPile), rectOf(el.hand), {
-            duration: 360,
-            rotate: Math.random() * 12 - 6,
+          flyClone(buildCardBack(), rectOf(el.drawPile), dest, {
+            duration: 340,
+            rotate: Math.random() * 8 - 4,
           }),
-        i * 65
+        i * 70
       );
     }
+    setTimeout(() => {
+      el.hand.style.opacity = "";
+    }, count * 70 + 320);
+
+    // Bots: poucas cartas encolhendo em direção a cada um
     state.players
       .filter((p) => !p.isHuman)
       .forEach((bot) => {
         const opp = opponentNode(bot.id);
         if (!opp) return;
+        const r = rectOf(opp);
+        const ocx = r.left + r.width / 2;
+        const ocy = r.top + r.height * 0.55;
         for (let i = 0; i < 3; i++) {
+          const dest = cardSizeRect(ocx, ocy, 0.42);
           setTimeout(
-            () => flyClone(buildCardBack(), rectOf(el.drawPile), rectOf(opp), { duration: 360 }),
-            i * 65
+            () => flyClone(buildCardBack(), rectOf(el.drawPile), dest, { duration: 340 }),
+            i * 70
           );
         }
       });
