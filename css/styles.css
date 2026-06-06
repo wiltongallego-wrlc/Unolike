@@ -739,3 +739,215 @@ body {
     animation: none;
   }
 }
+
+/* ====================================================================
+   Perfis (cadastro) e Ranking
+   ==================================================================== */
+.muted-text {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  line-height: 1.5;
+}
+.muted-text code {
+  background: var(--panel);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* Chip de perfil na home */
+.profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 360px;
+  background: var(--panel);
+  border: 1px solid var(--panel-strong);
+  border-radius: 14px;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+.profile-chip:active {
+  transform: scale(0.98);
+}
+.profile-chip__avatar {
+  font-size: 30px;
+  line-height: 1;
+}
+.profile-chip__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: 1;
+  text-align: left;
+}
+.profile-chip__name {
+  font-weight: 800;
+  font-size: 17px;
+}
+.profile-chip__stats {
+  font-size: 12px;
+  color: var(--muted);
+}
+.profile-chip__edit {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Lista de perfis */
+.profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.profile-row--active {
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+.profile-row__avatar {
+  font-size: 26px;
+}
+.profile-row__info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  text-align: left;
+}
+.profile-row__info small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.profile-row__del {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.profile-new {
+  border-top: 1px solid var(--panel-strong);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.profile-new h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+.profile-new input {
+  background: var(--panel);
+  border: 1px solid var(--panel-strong);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 16px;
+  outline: none;
+}
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+}
+.avatar-opt {
+  font-size: 22px;
+  padding: 6px 0;
+  background: var(--panel);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.avatar-opt--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+/* Abas */
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 4px;
+}
+.tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.tab--active {
+  background: var(--blue);
+  color: #fff;
+}
+
+/* Lista de ranking */
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 80px;
+}
+.rank-row {
+  display: grid;
+  grid-template-columns: 32px 30px 1fr auto;
+  grid-template-areas: "pos av name pts" "pos av sub pts";
+  align-items: center;
+  gap: 2px 8px;
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.rank-pos {
+  grid-area: pos;
+  font-weight: 800;
+  text-align: center;
+}
+.rank-av {
+  grid-area: av;
+  font-size: 22px;
+}
+.rank-name {
+  grid-area: name;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-pts {
+  grid-area: pts;
+  font-weight: 800;
+  color: var(--accent);
+}
+.rank-sub {
+  grid-area: sub;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Pontos no fim de jogo */
+.gameover-points {
+  font-size: 22px;
+  color: var(--accent);
+}
+.gameover-points strong {
+  font-size: 30px;
+}

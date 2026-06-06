@@ -55,3 +55,33 @@ Combine a carta do topo pela **cor** ou pelo **número/símbolo**. Cartas jogáv
 ---
 
 > Projeto independente, sem afiliação com a marca UNO® / Mattel.
+
+## 👤 Cadastro, pontuação e ranking
+
+- **Perfis** de jogadores (nome + avatar), salvos no aparelho. Toque no chip de perfil na tela inicial para criar/trocar.
+- **Pontuação** estilo UNO ao vencer: soma dos pontos das cartas que sobraram nas mãos dos oponentes (número = valor, ação = 20, curinga = 50).
+- **Ranking** com abas **Local** (no aparelho) e **Global** (via Supabase, opcional).
+
+## ☁️ Backend opcional (Supabase) — ranking global e online
+
+O jogo funciona 100% offline. Para ativar **ranking global** (e, em breve, **jogo online**):
+
+1. Crie um projeto grátis em https://supabase.com
+2. Em **Project Settings → API**, copie a **Project URL** e a chave **anon public**.
+3. Cole em `js/config.js`:
+   ```js
+   window.UNOLIKE_CONFIG = {
+     supabaseUrl: "https://SEU-PROJETO.supabase.co",
+     supabaseAnonKey: "SUA_CHAVE_ANON",
+   };
+   ```
+4. No Supabase, abra **SQL Editor** e rode o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
+5. Em **Authentication → Providers**, habilite **Anonymous sign-ins**.
+6. (Para o online, fase 3) Em **Database → Replication**, adicione `rooms` e `room_players` à publicação `supabase_realtime`.
+
+> A chave **anon** é destinada ao front-end e é segura com as políticas de RLS do schema. Nunca use a chave **service_role** no app.
+
+### Status das fases
+- ✅ Fase 1: perfis, pontuação e ranking local
+- ✅ Fase 2: ranking global (Supabase) — requer suas chaves
+- 🚧 Fase 3: jogo online (salas por código + partida pública) — em desenvolvimento

@@ -81,3 +81,14 @@ function cardLabel(card) {
   if (isNumberCard(card)) return card.value;
   return SYMBOLS[card.value] || "?";
 }
+
+// Pontuação estilo UNO: número = valor; ação = 20; curinga = 50
+function cardPoints(card) {
+  if (isNumberCard(card)) return parseInt(card.value, 10);
+  if (card.value === "wild" || card.value === "wild4") return 50;
+  return 20; // skip, reverse, draw2
+}
+
+function handPoints(hand) {
+  return hand.reduce((sum, c) => sum + cardPoints(c), 0);
+}

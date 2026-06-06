@@ -22,14 +22,18 @@
   <section id="screen-home" class="screen screen--active">
     <div class="home">
       <h1 class="logo">UNO<span>like</span></h1>
-      <p class="tagline">Jogo de cartas single player</p>
+      <p class="tagline">Jogo de cartas</p>
+
+      <button id="profile-chip" class="profile-chip" type="button">
+        <span id="profile-chip-avatar" class="profile-chip__avatar">🙂</span>
+        <span class="profile-chip__info">
+          <span id="profile-chip-name" class="profile-chip__name">Jogador</span>
+          <span id="profile-chip-stats" class="profile-chip__stats">0 vitórias</span>
+        </span>
+        <span class="profile-chip__edit">trocar ▾</span>
+      </button>
 
       <div class="home__options">
-        <label class="field">
-          <span>Seu nome</span>
-          <input id="player-name" type="text" maxlength="12" placeholder="Jogador" autocomplete="off" />
-        </label>
-
         <label class="field">
           <span>Número de oponentes</span>
           <select id="opponent-count">
@@ -46,6 +50,7 @@
       </div>
 
       <button id="btn-start" class="btn btn--primary btn--big">Jogar</button>
+      <button id="btn-ranking" class="btn btn--ghost">🏆 Ranking</button>
       <button id="btn-rules" class="btn btn--ghost">Como jogar</button>
     </div>
   </section>
@@ -138,14 +143,49 @@
     <div class="dialog">
       <h2 id="gameover-title">Fim de jogo</h2>
       <p id="gameover-text"></p>
+      <div id="gameover-points" class="gameover-points" hidden></div>
       <button id="btn-rematch" class="btn btn--primary">Jogar de novo</button>
       <button id="btn-home" class="btn btn--ghost">Início</button>
     </div>
   </div>
 
+  <!-- Perfis (cadastro de jogadores) -->
+  <div id="profiles-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>Jogadores</h2>
+      <div id="profiles-list" class="profiles-list"></div>
+
+      <div class="profile-new">
+        <h3>Novo jogador</h3>
+        <div id="avatar-picker" class="avatar-picker"></div>
+        <input id="new-profile-name" type="text" maxlength="12" placeholder="Nome do jogador" autocomplete="off" />
+        <button id="btn-create-profile" class="btn btn--primary">Criar jogador</button>
+      </div>
+
+      <button id="btn-close-profiles" class="btn btn--ghost">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Ranking -->
+  <div id="ranking-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>🏆 Ranking</h2>
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="local">Local</button>
+        <button class="tab" data-tab="global">Global</button>
+      </div>
+      <div id="ranking-list" class="ranking-list"></div>
+      <button id="btn-close-ranking" class="btn btn--primary">Fechar</button>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/cards.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/ai.js"></script>
+  <script src="js/profiles.js"></script>
+  <script src="js/net.js"></script>
   <script src="js/game.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
