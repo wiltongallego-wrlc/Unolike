@@ -146,11 +146,24 @@ const App = (() => {
 
   // ---------- Service worker (PWA) ----------
   function registerSW() {
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch(() => {});
-      });
-    }
+    if (!("serviceWorker" in navigator)) return;
+
+    // Recarrega uma vez quando um novo service worker assume o controle,
+    // garantindo que a versão recém-publicada apareça sem cache antigo.
+    let refreshing = false;
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing || !hadController) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("sw.js")
+        .then((reg) => reg.update())
+        .catch(() => {});
+    });
   }
 
   function init() {

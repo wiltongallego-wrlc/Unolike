@@ -1,6 +1,6 @@
 /* sw.js - service worker para funcionamento offline (PWA) */
 
-const CACHE = "unolike-v1";
+const CACHE = "unolike-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,20 +32,28 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+/*
+ * Estratégia network-first para conteúdo do próprio site:
+ * sempre tenta a versão mais nova quando online e usa o cache como
+ * reserva (offline). Assim novas publicações aparecem sem ficar presas
+ * em cache antigo.
+ */
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const req = event.request;
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return (
-        cached ||
-        fetch(event.request)
-          .then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-            return res;
-          })
-          .catch(() => cached)
-      );
-    })
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((cache) => cache.put(req, copy));
+        return res;
+      })
+      .catch(() =>
+        caches.match(req).then((cached) => cached || caches.match("./index.html"))
+      )
   );
 });
