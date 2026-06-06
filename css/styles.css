@@ -965,15 +965,16 @@ body {
   max-width: 360px;
 }
 .join-row input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--panel-strong);
   color: var(--text);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 12px 10px;
   font-size: 18px;
   font-weight: 800;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
   text-align: center;
   text-transform: uppercase;
   outline: none;
@@ -981,6 +982,7 @@ body {
 .join-row .btn {
   width: auto;
   flex: 0 0 auto;
+  padding: 12px 18px;
 }
 
 .lobby-code-wrap {
