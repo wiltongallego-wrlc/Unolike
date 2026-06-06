@@ -1,7 +1,7 @@
 {
-  "name": "Unolike",
-  "short_name": "Unolike",
-  "description": "Jogo de cartas estilo UNO para celular, single player contra bots.",
+  "name": "XablauCard",
+  "short_name": "XablauCard",
+  "description": "Jogo de cartas para celular: single player contra bots e online com amigos.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "fullscreen",

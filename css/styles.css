@@ -1028,3 +1028,127 @@ body {
   border-radius: 6px;
   padding: 2px 7px;
 }
+
+/* ====================================================================
+   Login (cadastro), mão em leque e animação XABLAU
+   ==================================================================== */
+
+/* ---- Login ---- */
+.auth-box {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auth-box input {
+  background: var(--panel);
+  border: 1px solid var(--panel-strong);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 13px 14px;
+  font-size: 16px;
+  outline: none;
+}
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--panel-strong);
+}
+.btn-link {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  text-decoration: underline;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+}
+
+/* ---- Mão em leque (segurando as cartas) ---- */
+.hand {
+  align-items: flex-end;
+  padding: 30px 24px 8px;
+}
+.card-slot {
+  flex: 0 0 auto;
+  transform-origin: bottom center;
+  transition: transform 0.18s ease;
+  margin: 0 -9px;
+}
+.card-slot:first-child {
+  margin-left: 0;
+}
+.card-slot:last-child {
+  margin-right: 0;
+}
+.card-slot .card {
+  display: block;
+}
+
+/* ---- Animação de impacto XABLAU ---- */
+.xablau-burst {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(255, 210, 63, 0.18), transparent 60%);
+}
+.xablau-burst[hidden] {
+  display: none;
+}
+.xablau-burst__word {
+  font-size: clamp(48px, 18vw, 130px);
+  font-weight: 900;
+  letter-spacing: -2px;
+  color: var(--yellow);
+  text-shadow:
+    0 0 0 #000,
+    4px 4px 0 var(--red),
+    -3px -3px 0 var(--blue),
+    0 10px 30px rgba(0, 0, 0, 0.6);
+  transform: rotate(-8deg);
+  animation: xablau-pop 1.1s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+.xablau-burst__name {
+  margin-top: 8px;
+  font-size: clamp(16px, 5vw, 26px);
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 3px 10px rgba(0, 0, 0, 0.7);
+  animation: xablau-fade 1.1s ease both;
+}
+@keyframes xablau-pop {
+  0% { transform: rotate(-8deg) scale(0.2); opacity: 0; }
+  35% { transform: rotate(-8deg) scale(1.25); opacity: 1; }
+  55% { transform: rotate(-8deg) scale(0.95); }
+  70% { transform: rotate(-8deg) scale(1.08); }
+  100% { transform: rotate(-8deg) scale(1); opacity: 1; }
+}
+@keyframes xablau-fade {
+  0%, 60% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.xablau-burst.out {
+  animation: xablau-out 0.3s ease forwards;
+}
+@keyframes xablau-out {
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xablau-burst__word { animation: none; }
+}

@@ -43,11 +43,15 @@ const Online = (() => {
       return false;
     }
     client = Net.getClient();
-    const u = Net.getUser();
+    const u = (typeof Auth !== "undefined" && Auth.getUser()) || Net.getUser();
+    if (!u) {
+      emit("error", "Faça login para jogar online.");
+      return false;
+    }
     const p = (typeof Profiles !== "undefined" && Profiles.current()) || null;
     me = {
-      id: u ? u.id : "anon-" + Math.random().toString(36).slice(2),
-      name: p ? p.name : "Jogador",
+      id: u.id,
+      name: p ? p.name : (u.email ? u.email.split("@")[0] : "Jogador"),
       avatar: p ? p.avatar : "🙂",
     };
     return true;

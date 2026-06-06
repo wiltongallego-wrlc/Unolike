@@ -1,4 +1,4 @@
-# Unolike 🎴
+# XablauCard 🎴
 
 Jogo de cartas **estilo UNO** para celular, **single player** contra bots. Feito como **PWA** (Progressive Web App) com HTML, CSS e JavaScript puro — sem dependências, instalável na tela inicial e jogável offline.
 

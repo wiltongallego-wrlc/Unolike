@@ -316,10 +316,57 @@ const UI = (() => {
         face.classList.add("disabled");
       }
       face.addEventListener("click", () => onCardClick(card));
-      el.hand.appendChild(face);
+      const slot = document.createElement("div");
+      slot.className = "card-slot";
+      slot.appendChild(face);
+      el.hand.appendChild(slot);
     });
+    layoutFan(el.hand);
 
     el.playerLabel.textContent = `${human.name} — ${human.hand.length} cartas`;
+  }
+
+  // Dispõe as cartas em leque, como uma mão sendo segurada
+  function layoutFan(handEl) {
+    const slots = Array.from(handEl.children);
+    const n = slots.length;
+    if (!n) return;
+    const mid = (n - 1) / 2;
+    const step = Math.min(6, 52 / n); // graus por carta
+    slots.forEach((slot, i) => {
+      const off = i - mid;
+      const rot = off * step;
+      const dy = Math.pow(Math.abs(off), 1.6) * 2.2;
+      slot.style.transform = `translateY(${dy}px) rotate(${rot}deg)`;
+    });
+  }
+
+  // ---------- Animação de impacto XABLAU ----------
+  let xablauTimer = null;
+  function showXablau(name) {
+    const burst = document.getElementById("xablau-burst");
+    if (!burst) return;
+    const nameEl = document.getElementById("xablau-burst-name");
+    if (nameEl) nameEl.textContent = name ? `${name} está perto de vencer!` : "";
+    burst.hidden = false;
+    burst.classList.remove("out");
+    // reinicia a animação
+    const word = burst.querySelector(".xablau-burst__word");
+    if (word) {
+      word.style.animation = "none";
+      void word.offsetWidth;
+      word.style.animation = "";
+    }
+    if (Sound.isEnabled()) Sound.uno();
+    if (navigator.vibrate) navigator.vibrate([40, 30, 80]);
+    clearTimeout(xablauTimer);
+    xablauTimer = setTimeout(() => {
+      burst.classList.add("out");
+      setTimeout(() => {
+        burst.hidden = true;
+        burst.classList.remove("out");
+      }, 300);
+    }, 1200);
   }
 
   // Distribuição inicial: cartas voam da pilha de compra, espalhando-se na mão
@@ -499,20 +546,14 @@ const UI = (() => {
 
     Game.on("needColor", () => showColorPicker());
 
-    Game.on("humanReachedUno", () => {
+    Game.on("humanReachedUno", (player) => {
       setUnoButton(true);
-      banner("Aperte UNO!", 1200);
-      if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+      showXablau(player ? player.name : "Você");
     });
 
     Game.on("uno", (player) => {
-      if (Sound.isEnabled()) Sound.uno();
-      if (player.isHuman) {
-        setUnoButton(false);
-        banner("UNO! 🎉", 900);
-      } else {
-        banner(`${player.name}: UNO!`, 900);
-      }
+      if (player.isHuman) setUnoButton(false);
+      showXablau(player.name);
     });
 
     Game.on("unoPenalty", (player) => {
@@ -551,5 +592,7 @@ const UI = (() => {
     banner,
     buildCardFace,
     buildCardBack,
+    layoutFan,
+    showXablau,
   };
 })();

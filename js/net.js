@@ -19,32 +19,31 @@ const Net = (() => {
     return configured() && typeof window.supabase !== "undefined";
   }
 
-  async function init() {
-    if (ready) return true;
-    if (!available()) return false;
-    if (initPromise) return initPromise;
+  function ensureClient() {
+    if (client) return client;
+    if (!available()) return null;
+    client = window.supabase.createClient(cfg().supabaseUrl, cfg().supabaseAnonKey);
+    return client;
+  }
 
-    initPromise = (async () => {
-      try {
-        client = window.supabase.createClient(cfg().supabaseUrl, cfg().supabaseAnonKey);
-        let {
-          data: { session },
-        } = await client.auth.getSession();
-        if (!session) {
-          const { data, error } = await client.auth.signInAnonymously();
-          if (error) throw error;
-          session = data.session;
-        }
-        user = session ? session.user : null;
-        ready = !!user;
-        return ready;
-      } catch (e) {
-        console.warn("Net: falha ao iniciar Supabase —", e.message);
-        ready = false;
-        return false;
-      }
-    })();
-    return initPromise;
+  async function init() {
+    if (!ensureClient()) return false;
+    try {
+      const {
+        data: { session },
+      } = await client.auth.getSession();
+      user = session ? session.user : null;
+      ready = true;
+      return true;
+    } catch (e) {
+      console.warn("Net: init —", e.message);
+      ready = false;
+      return false;
+    }
+  }
+
+  function setUser(u) {
+    user = u;
   }
 
   // Envia o resultado de uma partida para o ranking global
@@ -152,6 +151,8 @@ const Net = (() => {
     submitResult,
     leaderboard,
     isReady: () => ready,
+    ensureClient,
+    setUser,
     getClient: () => client,
     getUser: () => user,
     createPublicRoom,

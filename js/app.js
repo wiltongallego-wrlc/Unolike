@@ -4,6 +4,7 @@ const App = (() => {
   const $ = (sel) => document.querySelector(sel);
 
   const screens = {
+    login: $("#screen-login"),
     home: $("#screen-home"),
     game: $("#screen-game"),
   };
@@ -27,6 +28,10 @@ const App = (() => {
   let onlineOverHandled = false;
   let onlineLastCur = null;
   let pendingWildId = null;
+  let onlinePrevCounts = {};
+
+  // Auth
+  let authTab = "login";
 
   function loadSettings() {
     try {
@@ -142,7 +147,7 @@ const App = (() => {
 
   function renderRanking() {
     const list = $("#ranking-list");
-    document.querySelectorAll(".tab").forEach((t) =>
+    document.querySelectorAll("#ranking-modal .tab").forEach((t) =>
       t.classList.toggle("tab--active", t.dataset.tab === rankingTab)
     );
 
@@ -251,6 +256,7 @@ const App = (() => {
     onlineOverHandled = false;
     onlineLastCur = null;
     pendingWildId = null;
+    onlinePrevCounts = {};
     closeModal("lobby");
     closeModal("online");
     closeModal("gameover");
@@ -264,6 +270,15 @@ const App = (() => {
     const curId = state.players[state.currentIndex].id;
     const top = state.discard[state.discard.length - 1];
     const myTurn = curId === meId && state.status === "playing";
+
+    // Detecta "XABLAU" (jogador chegou à última carta)
+    state.players.forEach((p) => {
+      const prev = onlinePrevCounts[p.id];
+      if (prev !== undefined && prev > 1 && p.hand.length === 1) {
+        UI.showXablau(p.name);
+      }
+      onlinePrevCounts[p.id] = p.hand.length;
+    });
 
     // Oponentes
     const opp = $("#opponents");
@@ -321,8 +336,12 @@ const App = (() => {
       if (myTurn && playableIds.has(card.id)) f.classList.add("playable");
       else if (myTurn) f.classList.add("disabled");
       f.addEventListener("click", () => onlineCardClick(card, playableIds));
-      hand.appendChild(f);
+      const slot = document.createElement("div");
+      slot.className = "card-slot";
+      slot.appendChild(f);
+      hand.appendChild(slot);
     });
+    UI.layoutFan(hand);
     $("#player-label").textContent = `${meP.name} — ${meP.hand.length} cartas`;
 
     // Compra / UNO / destaque
@@ -395,6 +414,79 @@ const App = (() => {
     Online.leave();
     gameMode = "local";
     onlineInGame = false;
+  }
+
+  // ---------- Autenticação (cadastro obrigatório) ----------
+  function isActive(name) {
+    return screens[name] && screens[name].classList.contains("screen--active");
+  }
+
+  function ensureAccountProfile() {
+    ensureProfile();
+    const p = Profiles.current();
+    const em = Auth.email();
+    if (p && em && (p.name === "Você" || !p.name)) {
+      Profiles.update(p.id, (x) => (x.name = em.split("@")[0].slice(0, 12)));
+    }
+  }
+
+  function applyAuthGate() {
+    // Sem backend: libera o jogo localmente
+    if (!Auth.available()) {
+      $("#btn-logout").hidden = true;
+      if (isActive("login")) showScreen("home");
+      return;
+    }
+    if (Auth.isLoggedIn()) {
+      ensureAccountProfile();
+      renderProfileChip();
+      $("#btn-logout").hidden = false;
+      if (isActive("login")) showScreen("home");
+    } else {
+      $("#btn-logout").hidden = true;
+      if (onlineInGame) leaveOnline();
+      showScreen("login");
+    }
+  }
+
+  function authMsg(text) {
+    $("#auth-msg").textContent = text || "";
+  }
+
+  async function doAuthPrimary() {
+    const em = $("#auth-email").value.trim();
+    const pass = $("#auth-pass").value;
+    if (!em || !pass) {
+      authMsg("Preencha e-mail e senha.");
+      return;
+    }
+    if (pass.length < 6) {
+      authMsg("A senha precisa de pelo menos 6 caracteres.");
+      return;
+    }
+    authMsg("Processando…");
+    const fn = authTab === "signup" ? Auth.signUp : Auth.signIn;
+    const { data, error } = await fn(em, pass);
+    if (error) {
+      authMsg(error.message || "Não foi possível autenticar.");
+      return;
+    }
+    if (authTab === "signup" && data && !data.session) {
+      authMsg("Conta criada! Confirme pelo e-mail ou use o link mágico para entrar.");
+      return;
+    }
+    authMsg("");
+  }
+
+  async function doMagicLink() {
+    const em = $("#auth-email").value.trim();
+    if (!em) {
+      authMsg("Digite seu e-mail para receber o link.");
+      return;
+    }
+    authMsg("Enviando link…");
+    const { error } = await Auth.magicLink(em);
+    authMsg(error ? error.message : "Link enviado! Verifique seu e-mail.");
   }
 
   function showGameOver(winner) {
@@ -472,12 +564,27 @@ const App = (() => {
 
     // Ranking (abas)
     $("#btn-close-ranking").addEventListener("click", () => closeModal("ranking"));
-    document.querySelectorAll(".tab").forEach((t) =>
+    document.querySelectorAll("#ranking-modal .tab").forEach((t) =>
       t.addEventListener("click", () => {
         rankingTab = t.dataset.tab;
         renderRanking();
       })
     );
+
+    // Auth (login)
+    document.querySelectorAll("[data-auth]").forEach((t) =>
+      t.addEventListener("click", () => {
+        authTab = t.dataset.auth;
+        document
+          .querySelectorAll("[data-auth]")
+          .forEach((x) => x.classList.toggle("tab--active", x.dataset.auth === authTab));
+        $("#btn-auth-primary").textContent = authTab === "signup" ? "Criar conta" : "Entrar";
+        authMsg("");
+      })
+    );
+    $("#btn-auth-primary").addEventListener("click", doAuthPrimary);
+    $("#btn-magic").addEventListener("click", doMagicLink);
+    $("#btn-logout").addEventListener("click", () => Auth.signOut());
 
     $("#sound-toggle").addEventListener("change", (e) => {
       settings.sound = e.target.checked;
@@ -653,8 +760,10 @@ const App = (() => {
       },
     });
 
-    // Pré-aquece a conexão com o backend (se configurado)
-    if (Net.configured()) Net.init();
+    // Autenticação: exige cadastro para jogar (quando o backend existe)
+    if (Net.available()) showScreen("login"); // evita "piscar" a home
+    Auth.onChange(() => applyAuthGate());
+    Auth.init().then(() => applyAuthGate());
   }
 
   return { init, showGameOver };
