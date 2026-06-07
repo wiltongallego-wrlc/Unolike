@@ -326,18 +326,32 @@ const UI = (() => {
     el.playerLabel.textContent = `${human.name} — ${human.hand.length} cartas`;
   }
 
-  // Dispõe as cartas em leque, como uma mão sendo segurada
+  // Dispõe as cartas em leque (arco), sobrepondo para caber na largura
   function layoutFan(handEl) {
     const slots = Array.from(handEl.children);
     const n = slots.length;
     if (!n) return;
+
     const mid = (n - 1) / 2;
-    const step = Math.min(6, 52 / n); // graus por carta
+    const cardW = (slots[0].querySelector(".card") || slots[0]).offsetWidth || 70;
+    const avail = (handEl.clientWidth || window.innerWidth) - 16;
+
+    // Espaçamento horizontal entre centros: sobrepõe quanto mais cartas,
+    // garantindo que tudo caiba na largura disponível.
+    const maxStep = cardW * 0.72;
+    const step = n > 1 ? Math.min(maxStep, (avail - cardW) / (n - 1)) : 0;
+
+    // Abertura do leque (graus), limitada no total
+    const spreadPer = n > 1 ? Math.min(7, 60 / (n - 1)) : 0;
+
     slots.forEach((slot, i) => {
       const off = i - mid;
-      const rot = off * step;
-      const dy = Math.pow(Math.abs(off), 1.6) * 2.2;
-      slot.style.transform = `translateY(${dy}px) rotate(${rot}deg)`;
+      const x = off * step;
+      const rot = off * spreadPer;
+      const dy = Math.pow(Math.abs(off), 1.7) * 1.5; // arco: bordas mais baixas
+      const playable = slot.firstChild && slot.firstChild.classList.contains("playable");
+      slot.style.transform = `translateX(calc(-50% + ${x}px)) translateY(${dy}px) rotate(${rot}deg)`;
+      slot.style.zIndex = String(i + (playable ? 200 : 0));
     });
   }
 
@@ -583,6 +597,15 @@ const UI = (() => {
       App.showGameOver(winner);
     });
   }
+
+  // Reorganiza o leque ao girar/redimensionar a tela
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (el.hand && el.hand.children.length) layoutFan(el.hand);
+    }, 120);
+  });
 
   return {
     bindGame,

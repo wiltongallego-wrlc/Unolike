@@ -1155,3 +1155,41 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .xablau-burst__word { animation: none; }
 }
+
+/* ====================================================================
+   Mão em leque (arco) — sobrepõe e cabe na largura
+   ==================================================================== */
+.hand {
+  position: relative;
+  display: block;
+  overflow: visible;
+  width: 100%;
+  height: calc(var(--card-w) * 1.5 + 34px);
+  padding: 0;
+  margin: 6px 0 0;
+}
+.hand::-webkit-scrollbar {
+  display: none;
+}
+.card-slot {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  margin: 0;
+  transform-origin: bottom center;
+  transition: transform 0.18s ease, z-index 0s;
+  will-change: transform;
+}
+/* No leque, o realce da carta jogável usa filtro/sombra (o translate fica
+   por conta do próprio leque, evitando conflito de transform). */
+.hand .card.playable {
+  animation: none;
+  box-shadow: 0 0 0 3px var(--accent), 0 0 16px rgba(255, 210, 63, 0.7),
+    0 8px 16px rgba(0, 0, 0, 0.5);
+}
+.card-slot:active {
+  transition: transform 0.08s ease;
+}
+.card-slot:active .card {
+  filter: brightness(1.08);
+}
