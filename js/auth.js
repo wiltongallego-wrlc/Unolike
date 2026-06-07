@@ -62,7 +62,11 @@ const Auth = (() => {
   async function signUp(em, pass) {
     const c = client();
     if (!c) return { error: { message: "Backend indisponível." } };
-    return c.auth.signUp({ email: em, password: pass });
+    return c.auth.signUp({
+      email: em,
+      password: pass,
+      options: { emailRedirectTo: location.origin + location.pathname },
+    });
   }
   async function signIn(em, pass) {
     const c = client();
