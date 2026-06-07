@@ -100,6 +100,12 @@ const Auth = (() => {
     return session;
   }
 
+  async function changePassword(newPass) {
+    const c = client();
+    if (!c) return { error: { message: "Backend indisponível." } };
+    return c.auth.updateUser({ password: newPass });
+  }
+
   // Restaura a sessão a partir de um refresh token (usado pela biometria)
   async function restore(refreshToken) {
     const c = client();
@@ -127,5 +133,6 @@ const Auth = (() => {
     magicLink,
     signOut,
     restore,
+    changePassword,
   };
 })();

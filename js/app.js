@@ -20,7 +20,6 @@ const App = (() => {
   };
 
   let settings = loadSettings();
-  let selectedAvatar = Profiles.AVATARS[0];
 
   // Online
   let gameMode = "local"; // local | online
@@ -135,66 +134,75 @@ const App = (() => {
       `${p.stats.wins} ${p.stats.wins === 1 ? "vitória" : "vitórias"} · ${p.stats.points} pts`;
   }
 
-  function renderProfilesList() {
-    const wrap = $("#profiles-list");
-    wrap.innerHTML = "";
-    const currentId = Profiles.getCurrentId();
-    const list = Profiles.all();
+  function statBadges(s) {
+    const games = s.games || 0;
+    const winRate = games ? Math.round((s.wins / games) * 100) : 0;
+    const t = tierOf(s.points);
+    return (
+      `<div class="stat"><b>${s.points}</b><span>pontos</span></div>` +
+      `<div class="stat"><b>${s.wins}</b><span>vitórias</span></div>` +
+      `<div class="stat"><b>${games}</b><span>jogos</span></div>` +
+      `<div class="stat"><b>${winRate}%</b><span>aproveit.</span></div>` +
+      `<div class="stat"><b>${s.bestScore}</b><span>recorde</span></div>` +
+      `<div class="stat stat--tier"><b>${t.label}</b><span>tier</span></div>`
+    );
+  }
 
-    if (!list.length) {
-      wrap.innerHTML = '<p class="muted-text">Nenhum jogador ainda. Crie o primeiro abaixo.</p>';
-      return;
-    }
-
-    for (const p of list) {
-      const row = document.createElement("div");
-      row.className = "profile-row" + (p.id === currentId ? " profile-row--active" : "");
-
-      const av = document.createElement("span");
-      av.className = "profile-row__avatar";
-      av.textContent = p.avatar;
-
-      const info = document.createElement("div");
-      info.className = "profile-row__info";
-      info.innerHTML =
-        `<strong>${escapeHtml(p.name)}</strong>` +
-        `<small>${p.stats.wins}V/${p.stats.games}J · ${p.stats.points} pts · recorde ${p.stats.bestScore}</small>`;
-
-      const del = document.createElement("button");
-      del.className = "profile-row__del";
-      del.textContent = "✕";
-      del.title = "Remover";
-      del.addEventListener("click", (e) => {
-        e.stopPropagation();
-        Profiles.remove(p.id);
-        renderProfilesList();
-        renderProfileChip();
-      });
-
-      row.append(av, info, del);
-      row.addEventListener("click", () => {
-        Profiles.setCurrent(p.id);
-        renderProfilesList();
-        renderProfileChip();
-      });
-      wrap.appendChild(row);
-    }
+  function renderPlayerArea() {
+    const p = Profiles.current();
+    if (!p) return;
+    $("#pa-avatar").textContent = p.avatar;
+    $("#pa-name").textContent = p.name;
+    $("#pa-email").textContent = (Auth.available() && Auth.email()) || "";
+    $("#pa-stats").innerHTML = statBadges(p.stats);
+    $("#pa-name-input").value = p.name;
+    const acct = Auth.available() && Auth.isLoggedIn();
+    $("#pa-pass-section").style.display = acct ? "" : "none";
+    $("#btn-logout-2").style.display = acct ? "" : "none";
+    $("#pa-msg").textContent = "";
+    renderAvatarPicker();
   }
 
   function renderAvatarPicker() {
     const wrap = $("#avatar-picker");
+    if (!wrap) return;
     wrap.innerHTML = "";
+    const p = Profiles.current();
     Profiles.AVATARS.forEach((a) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "avatar-opt" + (a === selectedAvatar ? " avatar-opt--active" : "");
+      b.className = "avatar-opt" + (p && a === p.avatar ? " avatar-opt--active" : "");
       b.textContent = a;
       b.addEventListener("click", () => {
-        selectedAvatar = a;
-        renderAvatarPicker();
+        if (!p) return;
+        Profiles.update(p.id, (x) => (x.avatar = a));
+        renderPlayerArea();
+        renderProfileChip();
       });
       wrap.appendChild(b);
     });
+  }
+
+  function saveProfile() {
+    const p = Profiles.current();
+    if (!p) return;
+    const name = $("#pa-name-input").value.trim().slice(0, 12) || p.name;
+    Profiles.update(p.id, (x) => (x.name = name));
+    renderPlayerArea();
+    renderProfileChip();
+    $("#pa-msg").textContent = "Perfil salvo!";
+  }
+
+  async function changeProfilePassword() {
+    const np = $("#pa-new-pass").value;
+    if (!np || np.length < 6) {
+      $("#pa-msg").textContent = "A nova senha precisa de ao menos 6 caracteres.";
+      return;
+    }
+    $("#pa-msg").textContent = "Atualizando senha…";
+    const { error } = await Auth.changePassword(np);
+    $("#pa-new-pass").value = "";
+    $("#pa-msg").textContent = error ? error.message || "Falha ao atualizar." : "Senha atualizada!";
   }
 
   function escapeHtml(s) {
@@ -204,7 +212,7 @@ const App = (() => {
   }
 
   // ---------- Ranking ----------
-  let rankingTab = "local";
+  let rankingTab = "global";
 
   function renderRanking() {
     const list = $("#ranking-list");
@@ -212,20 +220,20 @@ const App = (() => {
       t.classList.toggle("tab--active", t.dataset.tab === rankingTab)
     );
 
-    if (rankingTab === "local") {
-      const rows = Profiles.ranked();
-      list.innerHTML = rows.length
-        ? rankingRows(
-            rows.map((p) => ({
+    if (rankingTab === "voce") {
+      const p = Profiles.current();
+      list.innerHTML = p
+        ? rankingRows([
+            {
               name: p.name,
               avatar: p.avatar,
               points: p.stats.points,
               wins: p.stats.wins,
               games: p.stats.games,
               best_score: p.stats.bestScore,
-            }))
-          )
-        : '<p class="muted-text">Jogue uma partida para aparecer no ranking.</p>';
+            },
+          ])
+        : '<p class="muted-text">Sem dados ainda.</p>';
       return;
     }
 
@@ -690,8 +698,9 @@ const App = (() => {
     }
 
     if (profile) {
-      // Single player conta apenas no ranking LOCAL (modo treino)
       Profiles.recordResult(profile.id, { won, score });
+      // O usuário é o jogador: resultados contam no ranking global
+      Net.submitResult({ name: profile.name, avatar: profile.avatar, won, points: score });
     }
     renderProfileChip();
 
@@ -719,29 +728,25 @@ const App = (() => {
     $("#btn-rules").addEventListener("click", () => openModal("rules"));
     $("#btn-close-rules").addEventListener("click", () => closeModal("rules"));
     $("#btn-ranking").addEventListener("click", () => {
-      rankingTab = "local";
+      rankingTab = "global";
       renderRanking();
       openModal("ranking");
     });
 
-    // Perfis
+    // Área do jogador
     $("#profile-chip").addEventListener("click", () => {
-      renderProfilesList();
-      renderAvatarPicker();
+      renderPlayerArea();
       openModal("profiles");
     });
     $("#btn-close-profiles").addEventListener("click", () => {
       closeModal("profiles");
       renderProfileChip();
     });
-    $("#btn-create-profile").addEventListener("click", () => {
-      const input = $("#new-profile-name");
-      Profiles.create(input.value, selectedAvatar);
-      input.value = "";
-      selectedAvatar = Profiles.AVATARS[Math.floor(Math.random() * Profiles.AVATARS.length)];
-      renderProfilesList();
-      renderAvatarPicker();
-      renderProfileChip();
+    $("#btn-save-profile").addEventListener("click", saveProfile);
+    $("#btn-change-pass").addEventListener("click", changeProfilePassword);
+    $("#btn-logout-2").addEventListener("click", () => {
+      closeModal("profiles");
+      Auth.signOut();
     });
 
     // Ranking (abas)

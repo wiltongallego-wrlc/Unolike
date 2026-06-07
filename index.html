@@ -179,19 +179,39 @@
     </div>
   </div>
 
-  <!-- Perfis (cadastro de jogadores) -->
+  <!-- Área do jogador (perfil da conta) -->
   <div id="profiles-modal" class="overlay" hidden>
     <div class="dialog dialog--scroll">
-      <h2>Jogadores</h2>
-      <div id="profiles-list" class="profiles-list"></div>
+      <h2>Meu perfil</h2>
 
-      <div class="profile-new">
-        <h3>Novo jogador</h3>
-        <div id="avatar-picker" class="avatar-picker"></div>
-        <input id="new-profile-name" type="text" maxlength="12" placeholder="Nome do jogador" autocomplete="off" />
-        <button id="btn-create-profile" class="btn btn--primary">Criar jogador</button>
+      <div class="player-head">
+        <div id="pa-avatar" class="pa-avatar">🙂</div>
+        <div class="pa-id">
+          <strong id="pa-name">Jogador</strong>
+          <small id="pa-email" class="muted-text"></small>
+        </div>
       </div>
 
+      <div id="pa-stats" class="pa-stats"></div>
+
+      <h3 class="pa-h3">Foto (avatar)</h3>
+      <div id="avatar-picker" class="avatar-picker"></div>
+
+      <label class="field">
+        <span>Nome de exibição</span>
+        <input id="pa-name-input" type="text" maxlength="12" autocomplete="off" />
+      </label>
+      <button id="btn-save-profile" class="btn btn--primary">Salvar</button>
+
+      <div id="pa-pass-section">
+        <h3 class="pa-h3">Alterar senha</h3>
+        <input id="pa-new-pass" type="password" placeholder="Nova senha (mín. 6)" autocomplete="new-password" />
+        <button id="btn-change-pass" class="btn btn--ghost">Atualizar senha</button>
+      </div>
+
+      <p id="pa-msg" class="muted-text"></p>
+
+      <button id="btn-logout-2" class="btn btn--danger">Sair da conta</button>
       <button id="btn-close-profiles" class="btn btn--ghost">Fechar</button>
     </div>
   </div>
@@ -201,8 +221,8 @@
     <div class="dialog dialog--scroll">
       <h2>🏆 Ranking</h2>
       <div class="tabs">
-        <button class="tab tab--active" data-tab="local">Local</button>
-        <button class="tab" data-tab="global">Global</button>
+        <button class="tab tab--active" data-tab="global">Global</button>
+        <button class="tab" data-tab="voce">Você</button>
       </div>
       <div id="ranking-list" class="ranking-list"></div>
       <button id="btn-close-ranking" class="btn btn--primary">Fechar</button>
