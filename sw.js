@@ -1,6 +1,6 @@
 /* sw.js - service worker para funcionamento offline (PWA) */
 
-const CACHE = "xablaucard-v7";
+const CACHE = "xablaucard-v8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const ASSETS = [
   "./js/profiles.js",
   "./js/net.js",
   "./js/auth.js",
+  "./js/biometric.js",
   "./js/online-engine.js",
   "./js/online.js",
   "./js/game.js",

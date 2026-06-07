@@ -4,6 +4,7 @@
 
 const Auth = (() => {
   let user = null;
+  let session = null;
   let initialized = false;
   const subs = [];
 
@@ -26,19 +27,25 @@ const Auth = (() => {
     }
     try {
       const {
-        data: { session },
+        data: { session: s },
       } = await c.auth.getSession();
+      session = s || null;
       user = session ? session.user : null;
     } catch (e) {
       user = null;
+      session = null;
     }
     Net.setUser(user);
 
     // Reage a login/logout (inclui retorno do link mágico)
-    c.auth.onAuthStateChange((_event, session) => {
-      const newUser = session ? session.user : null;
+    c.auth.onAuthStateChange((_event, s) => {
+      session = s || null;
+      const newUser = s ? s.user : null;
       const changed = (newUser && newUser.id) !== (user && user.id);
       user = newUser;
+      if (s && s.refresh_token && typeof Biometric !== "undefined" && Biometric.isEnabled()) {
+        Biometric.updateToken(s.refresh_token);
+      }
       if (changed) notify();
     });
 
@@ -85,13 +92,33 @@ const Auth = (() => {
     const c = client();
     if (c) await c.auth.signOut();
     user = null;
+    session = null;
     notify();
+  }
+
+  function getSession() {
+    return session;
+  }
+
+  // Restaura a sessão a partir de um refresh token (usado pela biometria)
+  async function restore(refreshToken) {
+    const c = client();
+    if (!c || !refreshToken) return { error: { message: "Sem token de sessão." } };
+    const { data, error } = await c.auth.refreshSession({ refresh_token: refreshToken });
+    if (!error && data && data.session) {
+      session = data.session;
+      user = data.session.user;
+      Net.setUser(user);
+      notify();
+    }
+    return { data, error };
   }
 
   return {
     init,
     onChange,
     getUser,
+    getSession,
     isLoggedIn,
     email,
     available,
@@ -99,5 +126,6 @@ const Auth = (() => {
     signIn,
     magicLink,
     signOut,
+    restore,
   };
 })();

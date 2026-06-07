@@ -32,6 +32,7 @@ const App = (() => {
 
   // Auth
   let authTab = "login";
+  let bioSupported = false;
 
   // Faixas de ranking (matchmaking por tier)
   const TIERS = [
@@ -522,13 +523,16 @@ const App = (() => {
       ensureAccountProfile();
       renderProfileChip();
       $("#btn-logout").hidden = false;
+      updateBioUI();
       if (isActive("login")) showScreen("home");
     } else {
       $("#btn-logout").hidden = true;
       if (onlineInGame) leaveOnline();
-      showScreen("login");
+      updateBioUI();
       const em = $("#auth-email");
-      if (em) setTimeout(() => em.focus(), 50);
+      if (em && !em.value && Biometric.storedEmail()) em.value = Biometric.storedEmail();
+      showScreen("login");
+      if (em && !em.value) setTimeout(() => em.focus(), 50);
     }
   }
 
@@ -618,6 +622,60 @@ const App = (() => {
     authMsg(error ? error.message : "Link enviado! Verifique seu e-mail.");
   }
 
+  // ---------- Biometria ----------
+  function updateBioUI() {
+    const toggle = $("#btn-bio-toggle");
+    if (toggle) {
+      const show = bioSupported && Auth.isLoggedIn();
+      toggle.hidden = !show;
+      toggle.textContent = Biometric.isEnabled() ? "🔐 Desativar biometria" : "🔐 Ativar biometria";
+    }
+    const loginBtn = $("#btn-biometric");
+    if (loginBtn) loginBtn.hidden = !(bioSupported && Biometric.canLogin());
+  }
+
+  async function biometricLogin() {
+    if (!Biometric.canLogin()) return;
+    authMsg("Verificando biometria…");
+    try {
+      const ok = await Biometric.verify();
+      if (!ok) {
+        authMsg("Biometria não reconhecida.");
+        return;
+      }
+      const { error } = await Auth.restore(Biometric.token());
+      if (error) {
+        authMsg("Sessão expirada — entre uma vez com e-mail.");
+        return;
+      }
+      authMsg("");
+    } catch (e) {
+      authMsg("Não foi possível usar a biometria.");
+    }
+  }
+
+  async function toggleBiometric() {
+    if (!Auth.isLoggedIn()) return;
+    if (Biometric.isEnabled()) {
+      Biometric.disable();
+      updateBioUI();
+      UI.banner("Biometria desativada", 1400);
+      return;
+    }
+    const sess = Auth.getSession();
+    if (!sess || !sess.refresh_token) {
+      UI.banner("Entre novamente para ativar a biometria", 1800);
+      return;
+    }
+    try {
+      await Biometric.enroll(sess.refresh_token, Auth.email());
+      updateBioUI();
+      UI.banner("Biometria ativada 🔐", 1600);
+    } catch (e) {
+      UI.banner("Não foi possível ativar a biometria", 1800);
+    }
+  }
+
   function showGameOver(winner) {
     const state = Game.getState();
     const profile = Profiles.current();
@@ -705,6 +763,8 @@ const App = (() => {
     $("#btn-auth-primary").addEventListener("click", doAuthPrimary);
     $("#btn-magic").addEventListener("click", doMagicLink);
     $("#btn-logout").addEventListener("click", () => Auth.signOut());
+    $("#btn-biometric").addEventListener("click", biometricLogin);
+    $("#btn-bio-toggle").addEventListener("click", toggleBiometric);
 
     $("#sound-toggle").addEventListener("change", (e) => {
       settings.sound = e.target.checked;
@@ -944,6 +1004,12 @@ const App = (() => {
         setOnlineBusy(false);
         $("#online-msg").textContent = msg || "Erro de conexão.";
       },
+    });
+
+    // Biometria: detecta suporte do aparelho
+    Biometric.supported().then((s) => {
+      bioSupported = s;
+      updateBioUI();
     });
 
     // Autenticação: exige cadastro para jogar (quando o backend existe)
