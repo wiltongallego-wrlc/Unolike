@@ -15,11 +15,44 @@ create table if not exists public.profiles (
   points      int  not null default 0,
   best_score  int  not null default 0,
   abandons    int  not null default 0,
+  logins      int  not null default 0,
+  is_admin    boolean not null default false,
+  last_seen   timestamptz,
+  created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
 
--- Se a tabela já existia sem a coluna abandons:
-alter table public.profiles add column if not exists abandons int not null default 0;
+-- Para tabelas que já existiam (idempotente):
+alter table public.profiles add column if not exists abandons   int not null default 0;
+alter table public.profiles add column if not exists logins     int not null default 0;
+alter table public.profiles add column if not exists is_admin   boolean not null default false;
+alter table public.profiles add column if not exists last_seen  timestamptz;
+alter table public.profiles add column if not exists created_at timestamptz not null default now();
+
+-- Registra acesso (login/abertura) sem mexer em pontuação. Usado para
+-- métricas de conversão, frequência e último acesso no painel admin.
+create or replace function public.touch_profile(p_name text, p_avatar text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.profiles as pr (id, name, avatar, logins, last_seen, created_at, updated_at)
+  values (auth.uid(), p_name, p_avatar, 1, now(), now(), now())
+  on conflict (id) do update set
+    name = excluded.name,
+    avatar = excluded.avatar,
+    logins = pr.logins + 1,
+    last_seen = now(),
+    updated_at = now();
+end; $$;
+
+grant execute on function public.touch_profile(text, text) to anon, authenticated;
+
+-- Torna o usuário atual (dono do app) administrador.
+-- Funciona mesmo que o perfil ainda não exista.
+insert into public.profiles (id, name, is_admin)
+select id, coalesce(raw_user_meta_data->>'name', split_part(email, '@', 1)), true
+from auth.users
+where email = 'presales-ia@truechange.com'
+on conflict (id) do update set is_admin = true;
 
 alter table public.profiles enable row level security;
 
@@ -49,6 +82,7 @@ begin
     wins       = pr.wins + (case when p_won then 1 else 0 end),
     points     = pr.points + gained,
     best_score = greatest(pr.best_score, gained),
+    last_seen  = now(),
     updated_at = now();
 end; $$;
 

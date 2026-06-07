@@ -1,0 +1,54 @@
+<!--
+  Template de e-mail — "Magic Link" (login) do XablauCard.
+  Cole em: Supabase > Authentication > Emails > Magic Link.
+  Variáveis disponíveis: {{ .ConfirmationURL }}
+-->
+<div style="margin:0;padding:0;background:#0b1020;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b1020;padding:28px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+               style="max-width:440px;background:#131a33;border-radius:18px;overflow:hidden;
+                      font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#f5f7ff;">
+          <tr>
+            <td align="center" style="padding:28px 28px 8px;">
+              <div style="font-size:34px;font-weight:900;letter-spacing:-1px;">
+                <span style="color:#e4002b;">Xablau</span><span style="color:#ffc400;">Card</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 28px 0;">
+              <h1 style="font-size:20px;margin:12px 0 6px;">Seu acesso ao jogo 🎴</h1>
+              <p style="color:#9aa3c0;font-size:14px;line-height:1.6;margin:0 0 20px;">
+                Toque no botão abaixo para entrar no XablauCard. O link é válido por
+                tempo limitado e só pode ser usado uma vez.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:0 28px 8px;">
+              <a href="{{ .ConfirmationURL }}"
+                 style="display:inline-block;background:#0a7be4;color:#fff;text-decoration:none;
+                        font-weight:800;font-size:16px;padding:14px 28px;border-radius:12px;">
+                Entrar no XablauCard
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 28px 28px;">
+              <p style="color:#9aa3c0;font-size:12px;line-height:1.6;margin:14px 0 0;">
+                Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+                <a href="{{ .ConfirmationURL }}" style="color:#ffd23f;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+              <p style="color:#6b7396;font-size:12px;margin:18px 0 0;">
+                Não pediu este e-mail? Pode ignorar com segurança.
+              </p>
+              <p style="color:#6b7396;font-size:12px;margin:10px 0 0;">— Equipe XablauCard</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>

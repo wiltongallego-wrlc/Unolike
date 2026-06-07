@@ -17,6 +17,7 @@ const App = (() => {
     ranking: $("#ranking-modal"),
     online: $("#online-modal"),
     lobby: $("#lobby-modal"),
+    admin: $("#admin-modal"),
   };
 
   let settings = loadSettings();
@@ -34,6 +35,7 @@ const App = (() => {
   // Auth
   let authTab = "login";
   let bioSupported = false;
+  let isAdminUser = false;
 
   // Faixas de ranking (matchmaking por tier)
   const TIERS = [
@@ -274,6 +276,84 @@ const App = (() => {
         );
       })
       .join("");
+  }
+
+  // ---------- Admin ----------
+  function updateAdminUI() {
+    const b = $("#btn-admin");
+    if (b) b.hidden = !isAdminUser;
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return "—";
+    const diff = Date.now() - new Date(ts).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "agora";
+    if (m < 60) return m + "min";
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + "h";
+    return Math.floor(h / 24) + "d";
+  }
+
+  function adminCard(value, label) {
+    return `<div class="admin-stat"><b>${value}</b><span>${label}</span></div>`;
+  }
+
+  function renderAdmin() {
+    const box = $("#admin-content");
+    box.innerHTML = '<p class="muted-text">Carregando…</p>';
+    Net.adminData().then((rows) => {
+      if (!rows) {
+        box.innerHTML =
+          '<p class="muted-text">Não foi possível carregar. Confirme o schema e a role de admin.</p>';
+        return;
+      }
+      const total = rows.length;
+      const players = rows.filter((r) => (r.games || 0) > 0).length;
+      const conv = total ? Math.round((players / total) * 100) : 0;
+      const totalGames = rows.reduce((s, r) => s + (r.games || 0), 0);
+      const totalAband = rows.reduce((s, r) => s + (r.abandons || 0), 0);
+      const active7 = rows.filter(
+        (r) => r.last_seen && Date.now() - new Date(r.last_seen).getTime() < 7 * 864e5
+      ).length;
+      const avg = players ? (totalGames / players).toFixed(1) : "0";
+
+      const cards =
+        '<div class="admin-stats">' +
+        adminCard(total, "usuários") +
+        adminCard(players, "jogaram") +
+        adminCard(conv + "%", "conversão") +
+        adminCard(active7, "ativos 7d") +
+        adminCard(totalGames, "partidas") +
+        adminCard(avg, "média/jog.") +
+        adminCard(totalAband, "abandonos") +
+        "</div>";
+
+      const list = rows
+        .slice()
+        .sort((a, b) => (b.points || 0) - (a.points || 0))
+        .map(
+          (r) =>
+            '<div class="admin-row">' +
+            `<span class="admin-av">${r.avatar || "🙂"}</span>` +
+            `<div class="admin-info"><strong>${escapeHtml(r.name || "Jogador")}${
+              r.is_admin ? " 🛠️" : ""
+            }</strong>` +
+            `<small>${r.points || 0} pts · ${r.wins || 0}V/${r.games || 0}J · ${
+              r.abandons || 0
+            } aband. · ${r.logins || 0} logins</small></div>` +
+            `<span class="admin-seen">${timeAgo(r.last_seen)}</span>` +
+            "</div>"
+        )
+        .join("");
+
+      box.innerHTML =
+        cards +
+        '<h3 class="pa-h3">Usuários</h3>' +
+        '<div class="admin-list">' +
+        (list || '<p class="muted-text">Sem usuários ainda.</p>') +
+        "</div>";
+    });
   }
 
   // ---------- Início de partida ----------
@@ -583,9 +663,19 @@ const App = (() => {
       renderProfileChip();
       $("#btn-logout").hidden = false;
       updateBioUI();
+      if (Net.available()) {
+        const pr = Profiles.current();
+        Net.touchProfile(pr ? pr.name : "Jogador", pr ? pr.avatar : "🙂");
+        Net.fetchMe().then((row) => {
+          isAdminUser = !!(row && row.is_admin);
+          updateAdminUI();
+        });
+      }
       if (isActive("login")) showScreen("home");
     } else {
       $("#btn-logout").hidden = true;
+      isAdminUser = false;
+      updateAdminUI();
       if (onlineInGame) leaveOnline();
       updateBioUI();
       const em = $("#auth-email");
@@ -784,6 +874,14 @@ const App = (() => {
       openModal("ranking");
     });
 
+    // Admin
+    $("#btn-admin").addEventListener("click", () => {
+      renderAdmin();
+      openModal("admin");
+    });
+    $("#btn-close-admin").addEventListener("click", () => closeModal("admin"));
+    $("#btn-admin-refresh").addEventListener("click", renderAdmin);
+
     // Área do jogador
     $("#profile-chip").addEventListener("click", () => {
       renderPlayerArea();
@@ -905,7 +1003,7 @@ const App = (() => {
     });
 
     // Fechar tocando fora do card (modais não-críticos)
-    ["rules", "ranking", "profiles", "online", "pause"].forEach((name) => {
+    ["rules", "ranking", "profiles", "online", "pause", "admin"].forEach((name) => {
       modals[name].addEventListener("click", (e) => {
         if (e.target === modals[name]) closeModal(name);
       });

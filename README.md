@@ -90,3 +90,26 @@ O jogo funciona 100% offline. Para ativar **ranking global** (e, em breve, **jog
 - **Salas por código:** usam apenas canais Realtime (broadcast + presence). Não exigem tabelas nem replicação — só o login anônimo habilitado.
 - **Partida pública:** usa a tabela `rooms` para descobrir/criar salas abertas (rode o `schema.sql`).
 - O **host** (quem cria a sala) é autoritativo: roda o motor e transmite o estado; os demais enviam ações.
+
+## 🛠️ Painel administrativo
+
+- Um botão **Admin** aparece na tela inicial **somente** para usuários com `is_admin = true` na tabela `profiles`.
+- Mostra: total de usuários, quantos jogaram, **conversão**, ativos nos últimos 7 dias, total de partidas, média por jogador, abandonos e a lista de usuários (pontos, V/J, abandonos, logins e **último acesso**).
+- Para virar admin, rode no SQL Editor (já incluído no `supabase/schema.sql`):
+  ```sql
+  insert into public.profiles (id, name, is_admin)
+  select id, split_part(email,'@',1), true from auth.users
+  where email = 'SEU-EMAIL'
+  on conflict (id) do update set is_admin = true;
+  ```
+- Métricas de acesso usam `last_seen`/`logins`, atualizados pela função `touch_profile` (chamada ao abrir/logar).
+
+> Observação de segurança: o botão é client-side e a tabela `profiles` é de leitura pública (necessário para o ranking). Para restringir dados sensíveis ao admin, seria preciso endurecer o RLS (e mover o ranking para uma view) — dá para fazer depois.
+
+## ✉️ E-mails (Supabase Auth)
+
+Templates temáticos prontos em `supabase/`:
+- `email-magic-link.html` → cole em **Authentication → Emails → Magic Link**
+- `email-confirm-signup.html` → cole em **Authentication → Emails → Confirm signup**
+
+Nome do remetente: em **Authentication → Emails → SMTP Settings**, configure um **SMTP próprio** (ex.: Resend/SendGrid) com **Sender name “XablauCard”** e um e-mail verificado. Sem SMTP próprio, o Supabase envia pelo remetente padrão (nome não personalizável).

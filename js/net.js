@@ -64,6 +64,56 @@ const Net = (() => {
     }
   }
 
+  // Registra acesso (login/abertura) para métricas
+  async function touchProfile(name, avatar) {
+    if (!(await init()) || !user) return false;
+    try {
+      const { error } = await client.rpc("touch_profile", {
+        p_name: name || "Jogador",
+        p_avatar: avatar || "🙂",
+      });
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.warn("Net: touchProfile —", e.message);
+      return false;
+    }
+  }
+
+  // Lê o próprio perfil (inclui is_admin)
+  async function fetchMe() {
+    if (!(await init()) || !user) return null;
+    try {
+      const { data, error } = await client
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.warn("Net: fetchMe —", e.message);
+      return null;
+    }
+  }
+
+  // Dados para o painel admin
+  async function adminData(limit = 500) {
+    if (!(await init())) return null;
+    try {
+      const { data, error } = await client
+        .from("profiles")
+        .select("id,name,avatar,points,wins,games,abandons,logins,last_seen,created_at,is_admin")
+        .order("last_seen", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn("Net: adminData —", e.message);
+      return null;
+    }
+  }
+
   // Lê o ranking global (top jogadores por pontos)
   async function leaderboard(limit = 50) {
     if (!(await init())) return null;
@@ -171,6 +221,9 @@ const Net = (() => {
     init,
     submitResult,
     leaderboard,
+    touchProfile,
+    fetchMe,
+    adminData,
     isReady: () => ready,
     ensureClient,
     setUser,

@@ -77,6 +77,7 @@
       <button id="btn-start" class="btn btn--primary btn--big">Jogar (1 jogador)</button>
       <button id="btn-online" class="btn btn--online">🌐 Jogar Online</button>
       <button id="btn-ranking" class="btn btn--ghost">🏆 Ranking</button>
+      <button id="btn-admin" class="btn btn--ghost" hidden>🛠️ Admin</button>
       <button id="btn-rules" class="btn btn--ghost">Como jogar</button>
       <button id="btn-install" class="btn btn--ghost" hidden>📲 Instalar app</button>
       <button id="btn-bio-toggle" class="btn btn--ghost" hidden>🔐 Ativar biometria</button>
@@ -227,6 +228,16 @@
       </div>
       <div id="ranking-list" class="ranking-list"></div>
       <button id="btn-close-ranking" class="btn btn--primary">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Painel administrativo (apenas admins) -->
+  <div id="admin-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>🛠️ Painel admin</h2>
+      <div id="admin-content"></div>
+      <button id="btn-admin-refresh" class="btn btn--ghost">Atualizar</button>
+      <button id="btn-close-admin" class="btn btn--primary">Fechar</button>
     </div>
   </div>
 
