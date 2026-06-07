@@ -536,6 +536,21 @@ const App = (() => {
     $("#auth-msg").textContent = text || "";
   }
 
+  function setAuthTab(name) {
+    authTab = name;
+    document
+      .querySelectorAll("[data-auth]")
+      .forEach((x) => x.classList.toggle("tab--active", x.dataset.auth === authTab));
+    $("#btn-auth-primary").textContent = authTab === "signup" ? "Criar conta" : "Entrar";
+  }
+
+  function userAlreadyExists(data) {
+    // Supabase (anti-enumeração): com confirmação de e-mail ligada, um
+    // cadastro de e-mail já existente volta sem erro, com identities vazio.
+    const u = data && data.user;
+    return !!(u && Array.isArray(u.identities) && u.identities.length === 0);
+  }
+
   async function doAuthPrimary() {
     const em = $("#auth-email").value.trim();
     const pass = $("#auth-pass").value;
@@ -547,18 +562,49 @@ const App = (() => {
       authMsg("A senha precisa de pelo menos 6 caracteres.");
       return;
     }
+
+    $("#btn-auth-primary").disabled = true;
     authMsg("Processando…");
-    const fn = authTab === "signup" ? Auth.signUp : Auth.signIn;
-    const { data, error } = await fn(em, pass);
-    if (error) {
-      authMsg(error.message || "Não foi possível autenticar.");
-      return;
+    try {
+      if (authTab === "signup") {
+        const { data, error } = await Auth.signUp(em, pass);
+        if (error) {
+          const m = (error.message || "").toLowerCase();
+          if (m.includes("already") || m.includes("registered") || m.includes("exist")) {
+            authMsg("Esse e-mail já tem conta. Use “Entrar”.");
+            setAuthTab("login");
+          } else {
+            authMsg(error.message || "Não foi possível criar a conta.");
+          }
+          return;
+        }
+        if (userAlreadyExists(data)) {
+          authMsg("Esse e-mail já tem conta. Use “Entrar”.");
+          setAuthTab("login");
+          return;
+        }
+        if (data && !data.session) {
+          authMsg("Conta criada! Confirme pelo e-mail (ou use o link mágico).");
+          setAuthTab("login");
+          return;
+        }
+        authMsg(""); // sessão criada → entra direto
+        return;
+      }
+
+      // Login
+      const { error } = await Auth.signIn(em, pass);
+      if (error) {
+        const m = (error.message || "").toLowerCase();
+        if (m.includes("invalid")) authMsg("E-mail ou senha incorretos.");
+        else if (m.includes("confirm")) authMsg("Confirme seu e-mail antes de entrar (ou use o link mágico).");
+        else authMsg(error.message || "Não foi possível entrar.");
+        return;
+      }
+      authMsg("");
+    } finally {
+      $("#btn-auth-primary").disabled = false;
     }
-    if (authTab === "signup" && data && !data.session) {
-      authMsg("Conta criada! Confirme pelo e-mail ou use o link mágico para entrar.");
-      return;
-    }
-    authMsg("");
   }
 
   async function doMagicLink() {
@@ -652,11 +698,7 @@ const App = (() => {
     // Auth (login)
     document.querySelectorAll("[data-auth]").forEach((t) =>
       t.addEventListener("click", () => {
-        authTab = t.dataset.auth;
-        document
-          .querySelectorAll("[data-auth]")
-          .forEach((x) => x.classList.toggle("tab--active", x.dataset.auth === authTab));
-        $("#btn-auth-primary").textContent = authTab === "signup" ? "Criar conta" : "Entrar";
+        setAuthTab(t.dataset.auth);
         authMsg("");
       })
     );
