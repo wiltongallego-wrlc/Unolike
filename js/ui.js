@@ -502,6 +502,7 @@ const UI = (() => {
   // ---------- UNO ----------
   function setUnoButton(enabled) {
     el.btnUno.disabled = !enabled;
+    el.btnUno.classList.toggle("pulse", !!enabled);
   }
 
   // ---------- Ligações de eventos do jogo ----------
@@ -560,12 +561,14 @@ const UI = (() => {
 
     Game.on("needColor", () => showColorPicker());
 
-    Game.on("humanReachedUno", (player) => {
+    Game.on("humanReachedUno", () => {
+      // Não mostra o impacto automaticamente; apenas sinaliza o botão
       setUnoButton(true);
-      showXablau(player ? player.name : "Você");
+      banner("Declare XABLAU!", 1100);
     });
 
     Game.on("uno", (player) => {
+      // O impacto só aparece quando alguém DECLARA (aperta o botão)
       if (player.isHuman) setUnoButton(false);
       showXablau(player.name);
     });

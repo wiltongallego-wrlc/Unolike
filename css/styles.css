@@ -1308,3 +1308,20 @@ body {
 .opponent--out .opponent__count {
   color: var(--red);
 }
+
+/* ====================================================================
+   Botão XABLAU pulsando (1 carta) — impacto só ao declarar
+   ==================================================================== */
+.btn--uno.pulse:not(:disabled) {
+  animation: uno-pulse 0.85s ease-in-out infinite;
+}
+@keyframes uno-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    transform: scale(1.13);
+    box-shadow: 0 0 20px var(--yellow), 0 4px 0 rgba(0, 0, 0, 0.3);
+  }
+}

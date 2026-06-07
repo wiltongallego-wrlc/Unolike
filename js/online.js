@@ -327,9 +327,6 @@ const Online = (() => {
   function play(cardId, color) {
     const a = { type: "play", cardId };
     if (color) a.color = color;
-    // marca UNO automaticamente se vai ficar com 1 carta
-    const mp = state && state.players.find((p) => p.id === me.id);
-    if (mp && mp.hand.length === 2) a.uno = true;
     dispatch(a);
   }
   function draw() {

@@ -371,17 +371,9 @@ const App = (() => {
       (state.log || []).forEach((l) => {
         if (l.t === "timeout") UI.banner(`${l.name} demorou! +1 carta`, 1300, true);
         else if (l.t === "abandon") UI.banner(`${l.name} abandonou 🚫`, 1700);
+        else if (l.t === "uno") UI.showXablau(l.name); // só quando alguém declara
       });
     }
-
-    // Detecta "XABLAU" (jogador chegou à última carta)
-    state.players.forEach((p) => {
-      const prev = onlinePrevCounts[p.id];
-      if (prev !== undefined && prev > 1 && p.hand.length === 1) {
-        UI.showXablau(p.name);
-      }
-      onlinePrevCounts[p.id] = p.hand.length;
-    });
 
     // Oponentes
     const opp = $("#opponents");
@@ -456,7 +448,7 @@ const App = (() => {
     $("#draw-pile").classList.toggle("must-draw", canDraw);
     $("#draw-pile").style.opacity = myTurn ? "1" : "0.6";
     $("#draw-hint").textContent = canDraw ? "Compre!" : "Comprar";
-    $("#btn-uno").disabled = !(meP.hand.length === 1 && !meP.saidUno);
+    UI.setUnoButton(meP.hand.length === 1 && !meP.saidUno);
     $(".player-area").classList.toggle("active", myTurn);
 
     // Banner de vez
