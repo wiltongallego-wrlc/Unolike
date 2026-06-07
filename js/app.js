@@ -28,6 +28,8 @@ const App = (() => {
   let onlineLastCur = null;
   let pendingWildId = null;
   let onlinePrevCounts = {};
+  let onlineLastLogV = 0;
+  let onlineTimerInt = null;
 
   // Auth
   let authTab = "login";
@@ -347,6 +349,8 @@ const App = (() => {
     onlineLastCur = null;
     pendingWildId = null;
     onlinePrevCounts = {};
+    onlineLastLogV = state.version;
+    startOnlineTimer();
     closeModal("lobby");
     closeModal("online");
     closeModal("gameover");
@@ -360,6 +364,15 @@ const App = (() => {
     const curId = state.players[state.currentIndex].id;
     const top = state.discard[state.discard.length - 1];
     const myTurn = curId === meId && state.status === "playing";
+
+    // Avisos de timeout/abandono (uma vez por versão de estado)
+    if (state.version !== onlineLastLogV) {
+      onlineLastLogV = state.version;
+      (state.log || []).forEach((l) => {
+        if (l.t === "timeout") UI.banner(`${l.name} demorou! +1 carta`, 1300, true);
+        else if (l.t === "abandon") UI.banner(`${l.name} abandonou 🚫`, 1700);
+      });
+    }
 
     // Detecta "XABLAU" (jogador chegou à última carta)
     state.players.forEach((p) => {
@@ -377,7 +390,10 @@ const App = (() => {
       .filter((p) => p.id !== meId)
       .forEach((p) => {
         const div = document.createElement("div");
-        div.className = "opponent" + (p.id === curId && state.status === "playing" ? " active" : "");
+        div.className =
+          "opponent" +
+          (p.id === curId && state.status === "playing" ? " active" : "") +
+          (p.out ? " opponent--out" : "");
         const av = document.createElement("div");
         av.className = "opponent__avatar";
         av.style.background = "transparent";
@@ -395,8 +411,9 @@ const App = (() => {
         }
         const count = document.createElement("div");
         count.className = "opponent__count";
-        count.innerHTML =
-          p.hand.length === 1 ? '<span class="uno-flag">UNO</span>' : `${p.hand.length} cartas`;
+        if (p.out) count.textContent = "saiu 🚫";
+        else if (p.hand.length === 1) count.innerHTML = '<span class="uno-flag">UNO</span>';
+        else count.textContent = `${p.hand.length} cartas`;
         div.append(av, name, cards, count);
         opp.appendChild(div);
       });
@@ -477,9 +494,12 @@ const App = (() => {
 
   function showOnlineOver(state) {
     onlineOverHandled = true;
+    stopOnlineTimer();
     const meId = Online.getMe().id;
+    const meP = state.players.find((p) => p.id === meId);
     const winner = state.players.find((p) => p.id === state.winnerId);
     const won = !!winner && winner.id === meId;
+    const iAbandoned = !!(meP && meP.out);
 
     const profile = Profiles.current();
     if (profile) {
@@ -489,12 +509,20 @@ const App = (() => {
           .filter((p) => p.id !== meId)
           .reduce((s, p) => s + handPoints(p.hand), 0);
       Profiles.recordResult(profile.id, { won, score });
-      Net.submitResult({ name: profile.name, avatar: profile.avatar, won, points: score });
+      // Se fui desclassificado por abandono, o host já penalizou no global
+      if (!iAbandoned) {
+        Net.submitResult({ name: profile.name, avatar: profile.avatar, won, points: score });
+      }
       renderProfileChip();
     }
 
-    $("#gameover-title").textContent = won ? "Você venceu! 🏆" : `${winner ? winner.name : "Alguém"} venceu`;
-    $("#gameover-text").textContent = won ? "Boa! Vitória online." : "Mais sorte na próxima!";
+    if (iAbandoned) {
+      $("#gameover-title").textContent = "Você abandonou 🚫";
+      $("#gameover-text").textContent = "Demorou demais — ranking penalizado.";
+    } else {
+      $("#gameover-title").textContent = won ? "Você venceu! 🏆" : `${winner ? winner.name : "Alguém"} venceu`;
+      $("#gameover-text").textContent = won ? "Boa! Vitória online." : "Mais sorte na próxima!";
+    }
     $("#gameover-points").hidden = true;
     $("#btn-rematch").style.display = Online.isHost() ? "" : "none";
     openModal("gameover");
@@ -504,6 +532,37 @@ const App = (() => {
     Online.leave();
     gameMode = "local";
     onlineInGame = false;
+    stopOnlineTimer();
+  }
+
+  // ---------- Timer de turno (online) ----------
+  function startOnlineTimer() {
+    stopOnlineTimer();
+    onlineTimerInt = setInterval(tickTurnTimer, 250);
+    tickTurnTimer();
+  }
+  function stopOnlineTimer() {
+    if (onlineTimerInt) clearInterval(onlineTimerInt);
+    onlineTimerInt = null;
+    const el = $("#turn-timer");
+    if (el) el.hidden = true;
+  }
+  function tickTurnTimer() {
+    const el = $("#turn-timer");
+    if (!el) return;
+    const st = Online.getState();
+    if (!st || st.status !== "playing" || !st.turnDeadline) {
+      el.hidden = true;
+      return;
+    }
+    const rem = Math.max(0, Math.ceil((st.turnDeadline - Date.now()) / 1000));
+    const me = Online.getMe();
+    const curP = st.players[st.currentIndex];
+    const mine = me && curP && curP.id === me.id;
+    el.hidden = false;
+    el.textContent = `⏱ ${mine ? "Sua vez — " : curP.name + " — "}${rem}s`;
+    el.classList.toggle("warn", rem <= 10);
+    el.classList.toggle("mine", !!mine);
   }
 
   // ---------- Autenticação (cadastro obrigatório) ----------

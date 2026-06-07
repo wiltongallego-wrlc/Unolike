@@ -1272,3 +1272,39 @@ body {
   outline: none;
   width: 100%;
 }
+
+/* ====================================================================
+   Timer de turno (online) e jogador desclassificado
+   ==================================================================== */
+.turn-timer {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.turn-timer.mine {
+  background: linear-gradient(180deg, var(--blue), var(--blue-d));
+}
+.turn-timer.warn {
+  background: linear-gradient(180deg, var(--red), var(--red-d));
+  animation: timer-pulse 0.8s ease-in-out infinite;
+}
+@keyframes timer-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.08); }
+}
+.opponent--out {
+  opacity: 0.45;
+  filter: grayscale(0.7);
+}
+.opponent--out .opponent__count {
+  color: var(--red);
+}

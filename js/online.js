@@ -22,6 +22,10 @@ const Online = (() => {
   let countdown = null; // valor da contagem (host)
   let hostCountdown = null; // contagem recebida (não-host)
 
+  const TURN_MS = 30000; // tempo por jogada
+  const GRACE = 1500;
+  let turnTimer = null;
+
   const cb = {}; // { lobby, start, state, closed, error }
 
   function on(handlers) {
@@ -217,14 +221,45 @@ const Online = (() => {
     return list.slice(0, 4).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar }));
   }
 
+  function clearTurnTimer() {
+    if (turnTimer) clearTimeout(turnTimer);
+    turnTimer = null;
+  }
+  function armTurnTimer() {
+    clearTurnTimer();
+    if (!isHost || !state || state.status !== "playing") return;
+    const curId = OnlineEngine.cur(state).id;
+    const ver = state.version;
+    turnTimer = setTimeout(() => {
+      if (!isHost || !state || state.status !== "playing") return;
+      if (state.version !== ver) return;
+      if (OnlineEngine.cur(state).id !== curId) return;
+      hostApply({ type: "timeout", playerId: curId });
+    }, TURN_MS + GRACE);
+  }
+
+  // Host registra abandonos no ranking global (mesmo se o jogador caiu)
+  function handleAbandons(s) {
+    (s.log || []).forEach((l) => {
+      if (l.t === "abandon" && l.id) Net.reportAbandon(l.id);
+    });
+  }
+
+  function commitState() {
+    state.turnDeadline = state.status === "playing" ? Date.now() + TURN_MS : null;
+    handleAbandons(state);
+    broadcast("state", { state });
+    emit("state", state);
+    persist();
+    armTurnTimer();
+  }
+
   function hostApply(action) {
     if (!isHost || !state) return;
     const ns = OnlineEngine.apply(state, action);
     if (ns !== state) {
       state = ns;
-      broadcast("state", { state });
-      emit("state", state);
-      persist();
+      commitState();
     }
   }
 
@@ -275,11 +310,11 @@ const Online = (() => {
     if (players.length < 2) return false;
     clearAuto();
     state = OnlineEngine.createState(players);
+    state.turnDeadline = Date.now() + TURN_MS;
     started = true;
     broadcast("start", { state });
-    broadcast("state", { state });
     emit("start", state);
-    persist();
+    commitState();
     return true;
   }
 
@@ -314,6 +349,7 @@ const Online = (() => {
       } catch (e) {}
     }
     clearAuto();
+    clearTurnTimer();
     channel = null;
     state = null;
     presenceList = [];

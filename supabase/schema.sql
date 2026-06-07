@@ -14,8 +14,12 @@ create table if not exists public.profiles (
   wins        int  not null default 0,
   points      int  not null default 0,
   best_score  int  not null default 0,
+  abandons    int  not null default 0,
   updated_at  timestamptz not null default now()
 );
+
+-- Se a tabela já existia sem a coluna abandons:
+alter table public.profiles add column if not exists abandons int not null default 0;
 
 alter table public.profiles enable row level security;
 
@@ -49,6 +53,27 @@ begin
 end; $$;
 
 grant execute on function public.add_result(text, text, boolean, int) to anon, authenticated;
+
+-- Penalidade por abandono (queda abrupta no ranking). Chamada pelo host
+-- da partida para o jogador que abandonou (funciona mesmo se ele caiu).
+-- Observação: é baseada em confiança (sem validação de partida no servidor);
+-- pode ser endurecida no futuro com uma Edge Function.
+create or replace function public.report_abandon(p_user uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  update public.profiles set
+    games    = games + 1,
+    abandons = abandons + 1,
+    points   = greatest(points - 75, 0),
+    updated_at = now()
+  where id = p_user;
+  if not found then
+    insert into public.profiles (id, name, avatar, games, abandons, points)
+    values (p_user, 'Jogador', '🙂', 1, 1, 0);
+  end if;
+end; $$;
+
+grant execute on function public.report_abandon(uuid) to anon, authenticated;
 
 -- ------------------------------------------------------------
 -- SALAS ONLINE  (Fase 3 — jogo online)

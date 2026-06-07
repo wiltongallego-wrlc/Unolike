@@ -1,8 +1,10 @@
 /* online-engine.js - motor autoritativo do jogo online (função pura).
    Reaproveita as regras de cards.js (buildDeck, shuffle, canPlay, etc.).
-   Não depende do DOM nem da rede, para poder ser testado isoladamente. */
+   Inclui timeouts de turno e desclassificação por abandono. */
 
 const OnlineEngine = (() => {
+  const MAX_TIMEOUTS = 2; // acima disso: desclassificado por abandono
+
   function clone(s) {
     return JSON.parse(JSON.stringify(s));
   }
@@ -15,6 +17,8 @@ const OnlineEngine = (() => {
       avatar: p.avatar || "🙂",
       hand: [],
       saidUno: false,
+      timeouts: 0,
+      out: false,
     }));
 
     for (let r = 0; r < 7; r++) {
@@ -37,17 +41,25 @@ const OnlineEngine = (() => {
       direction: 1,
       activeColor: first.color,
       winnerId: null,
+      turnDeadline: null,
       log: [],
     };
   }
 
   const cur = (s) => s.players[s.currentIndex];
   const top = (s) => s.discard[s.discard.length - 1];
+  const activePlayers = (s) => s.players.filter((p) => !p.out);
 
   function nextIndex(s, from, steps) {
     const n = s.players.length;
     let i = from;
-    for (let k = 0; k < steps; k++) i = (i + s.direction + n) % n;
+    let moved = 0;
+    let guard = 0;
+    while (moved < steps && guard < n * (steps + 2)) {
+      i = (i + s.direction + n) % n;
+      if (!s.players[i].out) moved++;
+      guard++;
+    }
     return i;
   }
   function advance(s, steps) {
@@ -74,8 +86,27 @@ const OnlineEngine = (() => {
     return out;
   }
 
+  function finishIfNeeded(s) {
+    const active = activePlayers(s);
+    if (active.length <= 1) {
+      s.status = "over";
+      s.winnerId = active[0] ? active[0].id : null;
+      return true;
+    }
+    return false;
+  }
+
+  // Desclassifica um jogador (abandono) e ajusta a vez
+  function disqualify(s, p) {
+    if (p.out) return;
+    p.out = true;
+    s.log.push({ t: "abandon", id: p.id, name: p.name });
+    if (finishIfNeeded(s)) return;
+    if (s.players[s.currentIndex].id === p.id) advance(s, 1);
+  }
+
   function effect(s, card) {
-    const two = s.players.length === 2;
+    const two = activePlayers(s).length === 2;
     switch (card.value) {
       case "reverse":
         s.direction *= -1;
@@ -113,9 +144,7 @@ const OnlineEngine = (() => {
 
   /**
    * Aplica uma ação e retorna o NOVO estado (ou o mesmo, se inválida).
-   * Ações: {type:'play', playerId, cardId, color?, uno?}
-   *        {type:'draw', playerId}
-   *        {type:'uno',  playerId}
+   * Ações: play, draw, uno, timeout (estouro do turno), abandon (forçado)
    */
   function apply(state, action) {
     if (state.status !== "playing") return state;
@@ -124,6 +153,12 @@ const OnlineEngine = (() => {
 
     const player = s.players.find((p) => p.id === action.playerId);
     if (!player) return state;
+
+    if (action.type === "abandon") {
+      disqualify(s, player);
+      s.version++;
+      return s;
+    }
 
     if (action.type === "uno") {
       if (player.hand.length === 1 && !player.saidUno) {
@@ -135,12 +170,26 @@ const OnlineEngine = (() => {
       return state;
     }
 
-    // play/draw só na vez do jogador
-    if (cur(s).id !== action.playerId) return state;
+    // As demais ações só valem na vez do jogador
+    if (cur(s).id !== action.playerId || player.out) return state;
+
+    if (action.type === "timeout") {
+      player.timeouts = (player.timeouts || 0) + 1;
+      if (player.timeouts > MAX_TIMEOUTS) {
+        disqualify(s, player); // abandono
+      } else {
+        drawN(s, player, 1); // penalidade
+        s.log.push({ t: "timeout", id: player.id, name: player.name });
+        advance(s, 1);
+      }
+      s.version++;
+      return s;
+    }
 
     if (action.type === "draw") {
       const playable = player.hand.filter((c) => canPlay(c, top(s), s.activeColor));
-      if (playable.length > 0) return state; // precisa jogar
+      if (playable.length > 0) return state;
+      player.timeouts = 0;
       const [c] = drawN(s, player, 1);
       s.log.push({ t: "draw", id: player.id, name: player.name, count: 1 });
       if (!(c && canPlay(c, top(s), s.activeColor))) advance(s, 1);
@@ -155,6 +204,7 @@ const OnlineEngine = (() => {
       if (!canPlay(card, top(s), s.activeColor)) return state;
       if (isWild(card) && !action.color) return state;
 
+      player.timeouts = 0;
       player.hand.splice(idx, 1);
       s.discard.push(card);
       s.activeColor = isWild(card) ? action.color : card.color;
@@ -175,17 +225,15 @@ const OnlineEngine = (() => {
     return state;
   }
 
-  // Cartas jogáveis de um jogador (para a UI)
   function playableFor(s, playerId) {
     const p = s.players.find((x) => x.id === playerId);
-    if (!p) return [];
+    if (!p || p.out) return [];
     return p.hand.filter((c) => canPlay(c, top(s), s.activeColor));
   }
 
-  return { createState, apply, cur, top, playableFor, nextIndex };
+  return { createState, apply, cur, top, playableFor, nextIndex, activePlayers, MAX_TIMEOUTS };
 })();
 
-// Permite usar no Node (testes headless)
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { OnlineEngine };
 }

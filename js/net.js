@@ -141,6 +141,18 @@ const Net = (() => {
     }
   }
 
+  async function reportAbandon(userId) {
+    if (!userId || !(await init())) return false;
+    try {
+      const { error } = await client.rpc("report_abandon", { p_user: userId });
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.warn("Net: reportAbandon —", e.message);
+      return false;
+    }
+  }
+
   async function deleteRoom(id) {
     if (!(await init())) return false;
     try {
@@ -168,5 +180,6 @@ const Net = (() => {
     findOpenPublicRoom,
     setRoomStatus,
     deleteRoom,
+    reportAbandon,
   };
 })();
