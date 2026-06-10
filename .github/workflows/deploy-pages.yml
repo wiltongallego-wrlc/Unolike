@@ -1,0 +1,64 @@
+name: Build & Deploy PWA
+
+on:
+  push:
+    branches:
+      - claude/mobile-uno-game-gEDKl
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # Sempre gera um pacote baixável do jogo (funciona em qualquer plano/repo)
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Empacotar site para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: unolike-site
+          path: |
+            index.html
+            css
+            js
+            icons
+            manifest.webmanifest
+            sw.js
+            README.md
+
+  # Publica no GitHub Pages (não derruba o CI caso o Pages esteja indisponível)
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Enviar artefato do Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

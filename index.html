@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+  />
+  <meta name="theme-color" content="#0b1020" />
+  <meta name="description" content="XablauCard - jogo de cartas para celular: single player e online." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="XablauCard" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <title>XablauCard</title>
+</head>
+<body>
+  <!-- Tela de login (cadastro obrigatório) -->
+  <section id="screen-login" class="screen">
+    <div class="home">
+      <h1 class="logo">Xablau<span>Card</span></h1>
+      <p class="tagline">Entre para jogar</p>
+
+      <div class="auth-box">
+        <div class="tabs">
+          <button class="tab tab--active" data-auth="login">Entrar</button>
+          <button class="tab" data-auth="signup">Criar conta</button>
+        </div>
+
+        <input id="auth-email" type="email" placeholder="E-mail" autocomplete="email" />
+        <input id="auth-pass" type="password" placeholder="Senha" autocomplete="current-password" />
+        <button id="btn-auth-primary" class="btn btn--primary">Entrar</button>
+
+        <div class="auth-or"><span>ou</span></div>
+        <button id="btn-magic" class="btn btn--ghost">✉️ Entrar por link mágico</button>
+        <button id="btn-biometric" class="btn btn--primary" hidden>🔐 Entrar com biometria</button>
+
+        <p id="auth-msg" class="muted-text"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tela inicial -->
+  <section id="screen-home" class="screen screen--active">
+    <div class="home">
+      <h1 class="logo">Xablau<span>Card</span></h1>
+      <p class="tagline">♠ Poker · Texas Hold'em ♥</p>
+
+      <button id="profile-chip" class="profile-chip" type="button">
+        <span id="profile-chip-avatar" class="profile-chip__avatar">🙂</span>
+        <span class="profile-chip__info">
+          <span id="profile-chip-name" class="profile-chip__name">Jogador</span>
+          <span id="profile-chip-stats" class="profile-chip__stats">0 vitórias</span>
+        </span>
+        <span class="profile-chip__edit">trocar ▾</span>
+      </button>
+
+      <div class="home__options">
+        <label class="field">
+          <span>Número de oponentes</span>
+          <select id="opponent-count">
+            <option value="1">1 bot</option>
+            <option value="2">2 bots</option>
+            <option value="3" selected>3 bots</option>
+          </select>
+        </label>
+
+        <label class="field field--row">
+          <span>Som</span>
+          <input id="sound-toggle" type="checkbox" checked />
+        </label>
+      </div>
+
+      <button id="btn-start" class="btn btn--primary btn--big">♠ Jogar Poker</button>
+      <button id="btn-online" class="btn btn--online" hidden>🌐 Jogar Online</button>
+      <button id="btn-ranking" class="btn btn--ghost">🏆 Ranking</button>
+      <button id="btn-admin" class="btn btn--ghost" hidden>🛠️ Admin</button>
+      <button id="btn-rules" class="btn btn--ghost">Como jogar</button>
+      <button id="btn-install" class="btn btn--ghost" hidden>📲 Instalar app</button>
+      <button id="btn-bio-toggle" class="btn btn--ghost" hidden>🔐 Ativar biometria</button>
+      <button id="btn-logout" class="btn-link" hidden>Sair da conta</button>
+    </div>
+  </section>
+
+  <!-- Tela do jogo -->
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <button id="btn-menu" class="icon-btn" aria-label="Menu">≡</button>
+      <div id="direction-indicator" class="direction" title="Sentido do jogo">⟳</div>
+      <button id="btn-sound" class="icon-btn" aria-label="Som">🔊</button>
+    </header>
+
+    <div id="opponents" class="opponents"></div>
+
+    <div class="table">
+      <div id="table-glow" class="table-glow"></div>
+      <div id="turn-timer" class="turn-timer" hidden></div>
+      <div class="pile">
+        <div class="pile-slot">
+          <button id="draw-pile" class="card card--back" aria-label="Comprar carta">
+            <span class="card-back-logo">XC</span>
+          </button>
+          <span id="draw-hint" class="pile-tag">Comprar</span>
+        </div>
+        <div class="pile-slot">
+          <div id="discard-pile" class="discard"></div>
+          <div class="color-row">
+            <span class="color-row__label">Cor</span>
+            <div id="color-badge" class="color-badge" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="player-area">
+      <div class="player-info">
+        <span id="player-label" class="player-label">Você</span>
+        <button id="btn-uno" class="btn btn--uno" disabled>XABLAU!</button>
+      </div>
+      <div id="player-hand" class="hand"></div>
+    </div>
+
+    <div id="turn-banner" class="turn-banner"></div>
+  </section>
+
+  <!-- Tela do Poker (Texas Hold'em) -->
+  <section id="screen-poker" class="screen">
+    <header class="topbar">
+      <button id="poker-menu" class="icon-btn" aria-label="Sair">≡</button>
+      <div class="poker-pot"><span>POTE</span><strong id="poker-pot">0</strong></div>
+      <button id="poker-sound" class="icon-btn" aria-label="Som">🔊</button>
+    </header>
+
+    <div id="poker-opponents" class="poker-opponents"></div>
+
+    <div class="poker-board">
+      <div id="poker-community" class="poker-community"></div>
+      <div id="poker-msg" class="poker-msg"></div>
+    </div>
+
+    <div class="poker-me">
+      <div class="poker-me-head">
+        <span id="poker-me-name" class="poker-me-name">Você</span>
+        <span id="poker-me-chips" class="poker-me-chips">0</span>
+      </div>
+      <div id="poker-hole" class="poker-hole"></div>
+      <div id="poker-actions" class="poker-actions"></div>
+    </div>
+  </section>
+
+  <!-- Seletor de cor (curinga) -->
+  <div id="color-picker" class="overlay" hidden>
+    <div class="dialog">
+      <h2>Escolha uma cor</h2>
+      <div class="color-choices">
+        <button class="color-choice" data-color="red" aria-label="Vermelho"></button>
+        <button class="color-choice" data-color="yellow" aria-label="Amarelo"></button>
+        <button class="color-choice" data-color="green" aria-label="Verde"></button>
+        <button class="color-choice" data-color="blue" aria-label="Azul"></button>
+      </div>
+      <button id="btn-color-cancel" class="btn btn--ghost">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Regras -->
+  <div id="rules-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>♠ Como jogar Poker</h2>
+      <div class="rules-text">
+        <p><strong>Texas Hold'em:</strong> cada um recebe <strong>2 cartas</strong> (na mão) e usa <strong>5 cartas comunitárias</strong> da mesa para formar a melhor mão de 5 cartas.</p>
+
+        <h3>Rodadas de aposta</h3>
+        <ul>
+          <li><strong>Pré-flop:</strong> apostas com as 2 cartas iniciais.</li>
+          <li><strong>Flop:</strong> 3 cartas na mesa + apostas.</li>
+          <li><strong>Turn:</strong> 4ª carta + apostas.</li>
+          <li><strong>River:</strong> 5ª carta + apostas.</li>
+          <li><strong>Showdown:</strong> quem tiver a melhor mão leva o pote.</li>
+        </ul>
+
+        <h3>Ações</h3>
+        <ul>
+          <li><strong>Passar (check):</strong> não apostar (se ninguém apostou).</li>
+          <li><strong>Pagar (call):</strong> igualar a aposta atual.</li>
+          <li><strong>Aumentar (raise):</strong> subir a aposta.</li>
+          <li><strong>Desistir (fold):</strong> abandonar a mão.</li>
+          <li><strong>All-in:</strong> apostar todas as fichas.</li>
+        </ul>
+
+        <h3>Blinds</h3>
+        <p>A cada mão, dois jogadores põem apostas obrigatórias: <strong>small blind</strong> e <strong>big blind</strong> — isso movimenta o jogo. O botão <strong>D</strong> (dealer) gira a cada mão.</p>
+
+        <h3>Ranking das mãos (da mais forte)</h3>
+        <ol class="rules-rank">
+          <li><strong>Straight flush</strong> — sequência do mesmo naipe</li>
+          <li><strong>Quadra</strong> — 4 cartas iguais</li>
+          <li><strong>Full house</strong> — trinca + par</li>
+          <li><strong>Flush</strong> — 5 do mesmo naipe</li>
+          <li><strong>Sequência</strong> — 5 em ordem (A-2-3-4-5 vale)</li>
+          <li><strong>Trinca</strong> — 3 iguais</li>
+          <li><strong>Dois pares</strong></li>
+          <li><strong>Par</strong></li>
+          <li><strong>Carta alta</strong></li>
+        </ol>
+        <p>Vence a mesa quem ficar com <strong>todas as fichas</strong>.</p>
+      </div>
+      <button id="btn-close-rules" class="btn btn--primary">Entendi</button>
+    </div>
+  </div>
+
+  <!-- Menu de pausa -->
+  <div id="pause-modal" class="overlay" hidden>
+    <div class="dialog">
+      <h2>Pausa</h2>
+      <button id="btn-resume" class="btn btn--primary">Continuar</button>
+      <button id="btn-rules-2" class="btn btn--ghost">Como jogar</button>
+      <button id="btn-quit" class="btn btn--danger">Sair para o início</button>
+    </div>
+  </div>
+
+  <!-- Fim de jogo -->
+  <div id="gameover-modal" class="overlay" hidden>
+    <div class="dialog">
+      <h2 id="gameover-title">Fim de jogo</h2>
+      <p id="gameover-text"></p>
+      <div id="gameover-points" class="gameover-points" hidden></div>
+      <button id="btn-rematch" class="btn btn--primary">Jogar de novo</button>
+      <button id="btn-home" class="btn btn--ghost">Início</button>
+    </div>
+  </div>
+
+  <!-- Área do jogador (perfil da conta) -->
+  <div id="profiles-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>Meu perfil</h2>
+
+      <div class="player-head">
+        <div id="pa-avatar" class="pa-avatar">🙂</div>
+        <div class="pa-id">
+          <strong id="pa-name">Jogador</strong>
+          <small id="pa-email" class="muted-text"></small>
+        </div>
+      </div>
+
+      <div id="pa-stats" class="pa-stats"></div>
+
+      <h3 class="pa-h3">Foto (avatar)</h3>
+      <div id="avatar-picker" class="avatar-picker"></div>
+
+      <label class="field">
+        <span>Nome de exibição</span>
+        <input id="pa-name-input" type="text" maxlength="12" autocomplete="off" />
+      </label>
+      <button id="btn-save-profile" class="btn btn--primary">Salvar</button>
+
+      <div id="pa-pass-section">
+        <h3 class="pa-h3">Alterar senha</h3>
+        <input id="pa-new-pass" type="password" placeholder="Nova senha (mín. 6)" autocomplete="new-password" />
+        <button id="btn-change-pass" class="btn btn--ghost">Atualizar senha</button>
+      </div>
+
+      <p id="pa-msg" class="muted-text"></p>
+
+      <button id="btn-logout-2" class="btn btn--danger">Sair da conta</button>
+      <button id="btn-close-profiles" class="btn btn--ghost">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Ranking -->
+  <div id="ranking-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>🏆 Ranking</h2>
+      <div class="tabs">
+        <button class="tab tab--active" data-tab="global">Global</button>
+        <button class="tab" data-tab="voce">Você</button>
+      </div>
+      <div id="ranking-list" class="ranking-list"></div>
+      <button id="btn-close-ranking" class="btn btn--primary">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Painel administrativo (apenas admins) -->
+  <div id="admin-modal" class="overlay" hidden>
+    <div class="dialog dialog--scroll">
+      <h2>🛠️ Painel admin</h2>
+      <div id="admin-content"></div>
+      <button id="btn-admin-refresh" class="btn btn--ghost">Atualizar</button>
+      <button id="btn-close-admin" class="btn btn--primary">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Online: menu -->
+  <div id="online-modal" class="overlay" hidden>
+    <div class="dialog">
+      <h2>🌐 Jogar Online</h2>
+      <button id="btn-create-room" class="btn btn--primary">Criar sala</button>
+      <div class="join-row">
+        <input id="join-code" type="text" maxlength="4" placeholder="CÓDIGO" autocomplete="off" />
+        <button id="btn-join-room" class="btn btn--primary">Entrar</button>
+      </div>
+      <button id="btn-public-match" class="btn btn--ghost">🎲 Partida pública</button>
+      <p id="online-msg" class="muted-text"></p>
+      <button id="btn-online-close" class="btn btn--ghost">Voltar</button>
+    </div>
+  </div>
+
+  <!-- Online: lobby da sala -->
+  <div id="lobby-modal" class="overlay" hidden>
+    <div class="dialog">
+      <h2>Sala</h2>
+      <div id="lobby-code-wrap" class="lobby-code-wrap">
+        <span class="muted-text">Código da sala</span>
+        <div id="lobby-code" class="lobby-code">----</div>
+        <span class="muted-text">Compartilhe para os amigos entrarem</span>
+      </div>
+      <div id="lobby-players" class="lobby-players"></div>
+      <p id="lobby-status" class="muted-text"></p>
+      <button id="btn-lobby-start" class="btn btn--primary" disabled>Começar</button>
+      <button id="btn-lobby-leave" class="btn btn--danger">Sair da sala</button>
+    </div>
+  </div>
+
+  <!-- Animação de impacto XABLAU -->
+  <div id="xablau-burst" class="xablau-burst" hidden>
+    <div class="xablau-burst__word">XABLAU!</div>
+    <div id="xablau-burst-name" class="xablau-burst__name"></div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/cards.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/profiles.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/biometric.js"></script>
+  <script src="js/online-engine.js"></script>
+  <script src="js/online.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/poker-eval.js"></script>
+  <script src="js/poker-engine.js"></script>
+  <script src="js/poker-ai.js"></script>
+  <script src="js/poker-game.js"></script>
+  <script src="js/poker-ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
