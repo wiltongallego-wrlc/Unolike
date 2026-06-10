@@ -7,6 +7,7 @@ const App = (() => {
     login: $("#screen-login"),
     home: $("#screen-home"),
     game: $("#screen-game"),
+    poker: $("#screen-poker"),
   };
 
   const modals = {
@@ -108,6 +109,12 @@ const App = (() => {
       const top = modalStack[modalStack.length - 1];
       if (top === "lobby") leaveOnline();
       closeModal(top);
+      pushSentinel();
+      return;
+    }
+    if (isActive("poker")) {
+      leavePoker();
+      showScreen("home");
       pushSentinel();
       return;
     }
@@ -354,6 +361,52 @@ const App = (() => {
         (list || '<p class="muted-text">Sem usuários ainda.</p>') +
         "</div>";
     });
+  }
+
+  // ---------- Poker (Texas Hold'em) ----------
+  function startPoker() {
+    Sound.unlock();
+    ensureProfile();
+    gameMode = "poker";
+    const p = Profiles.current();
+    const opponents = parseInt($("#opponent-count").value, 10);
+    settings.opponents = opponents;
+    saveSettings();
+    showScreen("poker");
+    PokerGame.newGame({
+      playerName: p ? p.name : "Você",
+      avatar: p ? p.avatar : "🙂",
+      opponents,
+      startingChips: 1000,
+      sb: 10,
+      bb: 20,
+    });
+  }
+
+  function leavePoker() {
+    PokerGame.stop();
+    gameMode = "local";
+  }
+
+  function showPokerOver(won) {
+    const state = PokerGame.getState();
+    const me = state.players.find((p) => p.isHuman);
+    const points = won ? Math.max(0, (me ? me.chips : 0) - 1000) : 0;
+    const profile = Profiles.current();
+    if (profile) {
+      Profiles.recordResult(profile.id, { won, score: points });
+      Net.submitResult({ name: profile.name, avatar: profile.avatar, won, points });
+      renderProfileChip();
+    }
+    $("#gameover-title").textContent = won ? "Você venceu a mesa! 🏆" : "Você quebrou";
+    $("#gameover-text").textContent = won
+      ? `Terminou com ${me ? me.chips : 0} fichas.`
+      : "Suas fichas acabaram. Tente de novo!";
+    const pts = $("#gameover-points");
+    pts.hidden = !won;
+    if (won) pts.innerHTML = `+<strong>${points}</strong> pontos`;
+    $("#btn-rematch").style.display = "";
+    openModal("gameover");
   }
 
   // ---------- Início de partida ----------
@@ -865,7 +918,12 @@ const App = (() => {
   // ---------- Ligações de eventos da interface ----------
   function bindUI() {
     // Home
-    $("#btn-start").addEventListener("click", startGame);
+    $("#btn-start").addEventListener("click", startPoker);
+    $("#poker-menu").addEventListener("click", () => {
+      leavePoker();
+      showScreen("home");
+    });
+    $("#poker-sound").addEventListener("click", toggleSound);
     $("#btn-rules").addEventListener("click", () => openModal("rules"));
     $("#btn-close-rules").addEventListener("click", () => closeModal("rules"));
     $("#btn-ranking").addEventListener("click", () => {
@@ -1041,6 +1099,10 @@ const App = (() => {
     // Fim de jogo
     $("#btn-rematch").addEventListener("click", () => {
       closeModal("gameover");
+      if (gameMode === "poker") {
+        startPoker();
+        return;
+      }
       if (gameMode === "online") {
         if (Online.isHost()) {
           onlineOverHandled = false;
@@ -1059,6 +1121,7 @@ const App = (() => {
     $("#btn-home").addEventListener("click", () => {
       closeModal("gameover");
       if (gameMode === "online") leaveOnline();
+      if (gameMode === "poker") leavePoker();
       showScreen("home");
     });
   }
@@ -1072,7 +1135,11 @@ const App = (() => {
     syncSoundIcon();
   }
   function syncSoundIcon() {
-    $("#btn-sound").textContent = Sound.isEnabled() ? "🔊" : "🔇";
+    const icon = Sound.isEnabled() ? "🔊" : "🔇";
+    const a = $("#btn-sound");
+    const b = $("#poker-sound");
+    if (a) a.textContent = icon;
+    if (b) b.textContent = icon;
   }
 
   // ---------- Service worker (PWA) ----------
@@ -1119,6 +1186,7 @@ const App = (() => {
     bindUI();
     renderProfileChip();
     UI.bindGame();
+    PokerUI.bind();
     registerSW();
 
     // Botão "voltar" do Android / navegador
@@ -1172,7 +1240,7 @@ const App = (() => {
     Auth.init().then(() => applyAuthGate());
   }
 
-  return { init, showGameOver };
+  return { init, showGameOver, showPokerOver };
 })();
 
 document.addEventListener("DOMContentLoaded", App.init);

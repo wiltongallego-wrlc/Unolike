@@ -74,8 +74,8 @@
         </label>
       </div>
 
-      <button id="btn-start" class="btn btn--primary btn--big">Jogar (1 jogador)</button>
-      <button id="btn-online" class="btn btn--online">🌐 Jogar Online</button>
+      <button id="btn-start" class="btn btn--primary btn--big">♠ Jogar Poker</button>
+      <button id="btn-online" class="btn btn--online" hidden>🌐 Jogar Online</button>
       <button id="btn-ranking" class="btn btn--ghost">🏆 Ranking</button>
       <button id="btn-admin" class="btn btn--ghost" hidden>🛠️ Admin</button>
       <button id="btn-rules" class="btn btn--ghost">Como jogar</button>
@@ -124,6 +124,31 @@
     </div>
 
     <div id="turn-banner" class="turn-banner"></div>
+  </section>
+
+  <!-- Tela do Poker (Texas Hold'em) -->
+  <section id="screen-poker" class="screen">
+    <header class="topbar">
+      <button id="poker-menu" class="icon-btn" aria-label="Sair">≡</button>
+      <div class="poker-pot"><span>POTE</span><strong id="poker-pot">0</strong></div>
+      <button id="poker-sound" class="icon-btn" aria-label="Som">🔊</button>
+    </header>
+
+    <div id="poker-opponents" class="poker-opponents"></div>
+
+    <div class="poker-board">
+      <div id="poker-community" class="poker-community"></div>
+      <div id="poker-msg" class="poker-msg"></div>
+    </div>
+
+    <div class="poker-me">
+      <div class="poker-me-head">
+        <span id="poker-me-name" class="poker-me-name">Você</span>
+        <span id="poker-me-chips" class="poker-me-chips">0</span>
+      </div>
+      <div id="poker-hole" class="poker-hole"></div>
+      <div id="poker-actions" class="poker-actions"></div>
+    </div>
   </section>
 
   <!-- Seletor de cor (curinga) -->
@@ -291,6 +316,11 @@
   <script src="js/online.js"></script>
   <script src="js/game.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/poker-eval.js"></script>
+  <script src="js/poker-engine.js"></script>
+  <script src="js/poker-ai.js"></script>
+  <script src="js/poker-game.js"></script>
+  <script src="js/poker-ui.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
