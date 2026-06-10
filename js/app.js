@@ -919,10 +919,7 @@ const App = (() => {
   function bindUI() {
     // Home
     $("#btn-start").addEventListener("click", startPoker);
-    $("#poker-menu").addEventListener("click", () => {
-      leavePoker();
-      showScreen("home");
-    });
+    $("#poker-menu").addEventListener("click", () => openModal("pause"));
     $("#poker-sound").addEventListener("click", toggleSound);
     $("#btn-rules").addEventListener("click", () => openModal("rules"));
     $("#btn-close-rules").addEventListener("click", () => closeModal("rules"));
@@ -1093,6 +1090,7 @@ const App = (() => {
     $("#btn-quit").addEventListener("click", () => {
       closeModal("pause");
       if (gameMode === "online") leaveOnline();
+      if (gameMode === "poker") leavePoker();
       showScreen("home");
     });
 

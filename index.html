@@ -47,7 +47,7 @@
   <section id="screen-home" class="screen screen--active">
     <div class="home">
       <h1 class="logo">Xablau<span>Card</span></h1>
-      <p class="tagline">Jogo de cartas</p>
+      <p class="tagline">♠ Poker · Texas Hold'em ♥</p>
 
       <button id="profile-chip" class="profile-chip" type="button">
         <span id="profile-chip-avatar" class="profile-chip__avatar">🙂</span>
@@ -168,18 +168,44 @@
   <!-- Regras -->
   <div id="rules-modal" class="overlay" hidden>
     <div class="dialog dialog--scroll">
-      <h2>Como jogar</h2>
+      <h2>♠ Como jogar Poker</h2>
       <div class="rules-text">
-        <p>Combine a carta do topo da pilha pela <strong>cor</strong> ou pelo <strong>número/símbolo</strong>.</p>
+        <p><strong>Texas Hold'em:</strong> cada um recebe <strong>2 cartas</strong> (na mão) e usa <strong>5 cartas comunitárias</strong> da mesa para formar a melhor mão de 5 cartas.</p>
+
+        <h3>Rodadas de aposta</h3>
         <ul>
-          <li><strong>Pular (⊘):</strong> o próximo jogador perde a vez.</li>
-          <li><strong>Inverter (⇄):</strong> muda o sentido do jogo.</li>
-          <li><strong>+2:</strong> o próximo compra 2 cartas e perde a vez.</li>
-          <li><strong>Curinga:</strong> escolha qualquer cor.</li>
-          <li><strong>Curinga +4:</strong> escolha a cor; o próximo compra 4 e perde a vez.</li>
+          <li><strong>Pré-flop:</strong> apostas com as 2 cartas iniciais.</li>
+          <li><strong>Flop:</strong> 3 cartas na mesa + apostas.</li>
+          <li><strong>Turn:</strong> 4ª carta + apostas.</li>
+          <li><strong>River:</strong> 5ª carta + apostas.</li>
+          <li><strong>Showdown:</strong> quem tiver a melhor mão leva o pote.</li>
         </ul>
-        <p>Quando ficar com <strong>1 carta</strong>, grite <strong>XABLAU!</strong> (o equivalente ao "UNO").</p>
-        <p>Vence quem ficar <strong>sem cartas</strong> primeiro.</p>
+
+        <h3>Ações</h3>
+        <ul>
+          <li><strong>Passar (check):</strong> não apostar (se ninguém apostou).</li>
+          <li><strong>Pagar (call):</strong> igualar a aposta atual.</li>
+          <li><strong>Aumentar (raise):</strong> subir a aposta.</li>
+          <li><strong>Desistir (fold):</strong> abandonar a mão.</li>
+          <li><strong>All-in:</strong> apostar todas as fichas.</li>
+        </ul>
+
+        <h3>Blinds</h3>
+        <p>A cada mão, dois jogadores põem apostas obrigatórias: <strong>small blind</strong> e <strong>big blind</strong> — isso movimenta o jogo. O botão <strong>D</strong> (dealer) gira a cada mão.</p>
+
+        <h3>Ranking das mãos (da mais forte)</h3>
+        <ol class="rules-rank">
+          <li><strong>Straight flush</strong> — sequência do mesmo naipe</li>
+          <li><strong>Quadra</strong> — 4 cartas iguais</li>
+          <li><strong>Full house</strong> — trinca + par</li>
+          <li><strong>Flush</strong> — 5 do mesmo naipe</li>
+          <li><strong>Sequência</strong> — 5 em ordem (A-2-3-4-5 vale)</li>
+          <li><strong>Trinca</strong> — 3 iguais</li>
+          <li><strong>Dois pares</strong></li>
+          <li><strong>Par</strong></li>
+          <li><strong>Carta alta</strong></li>
+        </ol>
+        <p>Vence a mesa quem ficar com <strong>todas as fichas</strong>.</p>
       </div>
       <button id="btn-close-rules" class="btn btn--primary">Entendi</button>
     </div>

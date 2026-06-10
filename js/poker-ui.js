@@ -136,63 +136,100 @@ const PokerUI = (() => {
     return state.results.map((x) => `${x.name} +${x.amount} (${x.hand || ""})`).join("  ·  ");
   }
 
+  // ---------- Dica ----------
+  function hint(state, legal, me) {
+    const str = PokerAI.strength(state, me);
+    const toCall = legal.callAmount;
+    const pot = PokerEngine.pot(state);
+    let text, tone;
+    if (toCall <= 0) {
+      if (str > 0.6) { text = "mão forte — aposte por valor"; tone = "good"; }
+      else if (str > 0.35) { text = "mão ok — pode passar"; tone = "mid"; }
+      else { text = "mão fraca — passe de graça"; tone = "mid"; }
+    } else {
+      const odds = toCall / (pot + toCall);
+      if (str > 0.78) { text = "mão muito forte — aumente"; tone = "good"; }
+      else if (str >= odds) { text = `vale pagar (precisa ~${Math.round(odds * 100)}%)`; tone = "mid"; }
+      else { text = "provavelmente desista"; tone = "bad"; }
+    }
+    return { str, text, tone };
+  }
+
   // ---------- Ações do jogador ----------
   function renderActions(legal) {
     el.actions.innerHTML = "";
     if (!legal) return;
-    const me = PokerGame.getState().players.find((p) => p.isHuman);
+    const state = PokerGame.getState();
+    const me = state.players.find((p) => p.isHuman);
+    const pot = PokerEngine.pot(state);
 
+    // Barra de informações
+    const info = document.createElement("div");
+    info.className = "poker-info";
+    info.innerHTML =
+      `<span>Pote <b>${pot}</b></span>` +
+      (legal.callAmount > 0 ? `<span>Pagar <b>${legal.callAmount}</b></span>` : `<span>Sem aposta</span>`) +
+      `<span>Stack <b>${me.chips}</b></span>`;
+    el.actions.appendChild(info);
+
+    // Dica
+    const h = hint(state, legal, me);
+    const hintEl = document.createElement("div");
+    hintEl.className = "poker-hint poker-hint--" + h.tone;
+    hintEl.innerHTML =
+      `<div class="poker-strbar"><i style="width:${Math.round(h.str * 100)}%"></i></div>` +
+      `<span>💡 ${h.text}</span>`;
+    el.actions.appendChild(hintEl);
+
+    // Botões principais
     const row = document.createElement("div");
     row.className = "poker-act-row";
-
-    const fold = btn("Desistir", "poker-btn poker-btn--fold", () => PokerGame.humanAction("fold"));
-    row.appendChild(fold);
-
+    row.appendChild(btn("Desistir", "poker-btn poker-btn--fold", () => PokerGame.humanAction("fold")));
     if (legal.canCheck) {
       row.appendChild(btn("Passar", "poker-btn", () => PokerGame.humanAction("check")));
     } else if (legal.canCall) {
       row.appendChild(
-        btn(`Pagar ${legal.callAmount}`, "poker-btn poker-btn--call", () =>
-          PokerGame.humanAction("call")
-        )
+        btn(`Pagar ${legal.callAmount}`, "poker-btn poker-btn--call", () => PokerGame.humanAction("call"))
       );
     }
-
     el.actions.appendChild(row);
 
+    // Aumentar
     if (legal.canRaise) {
       const min = legal.minRaiseTo;
       const max = legal.maxRaiseTo;
+      const callAmt = legal.callAmount;
+      const potAfter = pot + callAmt;
+      const clamp = (v) => Math.min(max, Math.max(min, Math.round(v)));
+
       const wrap = document.createElement("div");
       wrap.className = "poker-raise";
+
+      const label = document.createElement("div");
+      label.className = "poker-raise-val";
 
       const slider = document.createElement("input");
       slider.type = "range";
       slider.min = String(min);
       slider.max = String(max);
       slider.value = String(min);
-      slider.step = String(Math.max(1, Math.floor(PokerGame.getState().bb / 2)));
-
-      const label = document.createElement("div");
-      label.className = "poker-raise-val";
+      slider.step = String(Math.max(1, Math.floor(state.bb / 2)));
       const upd = () => (label.textContent = `Aumentar para ${slider.value}`);
-      upd();
       slider.addEventListener("input", upd);
+      upd();
 
       const quick = document.createElement("div");
       quick.className = "poker-quick";
-      const pot = PokerEngine.pot(PokerGame.getState());
-      [["½ pote", Math.floor(pot / 2)], ["Pote", pot], ["All-in", max]].forEach(([t, v]) => {
-        quick.appendChild(
-          btn(t, "poker-chip", () => {
-            const target = t === "All-in" ? max : Math.min(max, Math.max(min, (me.streetBet || 0) + v));
-            slider.value = String(Math.min(max, Math.max(min, target)));
-            upd();
-          })
-        );
-      });
+      const setVal = (v) => {
+        slider.value = String(clamp(v));
+        upd();
+      };
+      quick.appendChild(btn("Mín", "poker-chip", () => setVal(min)));
+      quick.appendChild(btn("½ pote", "poker-chip", () => setVal(me.streetBet + callAmt + potAfter * 0.5)));
+      quick.appendChild(btn("Pote", "poker-chip", () => setVal(me.streetBet + callAmt + potAfter)));
+      quick.appendChild(btn("All-in", "poker-chip poker-chip--allin", () => setVal(max)));
 
-      const confirm = btn("Confirmar", "poker-btn poker-btn--raise", () => {
+      const confirm = btn("Confirmar aumento", "poker-btn poker-btn--raise", () => {
         PokerGame.humanAction("raise", parseInt(slider.value, 10));
       });
 
